@@ -130,10 +130,13 @@ char *read_file(char *path, unsigned long *length) {
   len = ftell(fp);
   buf = (char *)malloc(len);
   if (!buf) {
-      /** It handles the failure of dynamic memory allocation **/
-      fclose(fp); 
-      return NULL;
+
+    /** It handles the failure of dynamic memory allocation **/
+    fclose(fp);
+    return NULL;
+
   }
+
   rewind(fp);
   fread(buf, 1, len, fp);
   fclose(fp);

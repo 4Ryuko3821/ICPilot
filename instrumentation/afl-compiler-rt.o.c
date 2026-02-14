@@ -263,7 +263,7 @@ static int __afl_selective_coverage_temp = 1;
 
 /* Aligned for use as LLVM vector operands in ngram/K-ctx modes (#1855).
    Alignment scales with PREV_LOC_T so non-default MAP_SIZE_POW2 stays safe. */
-#define AFL_PREV_LOC_ALIGN   (sizeof(PREV_LOC_T) * NGRAM_SIZE_MAX)
+#define AFL_PREV_LOC_ALIGN (sizeof(PREV_LOC_T) * NGRAM_SIZE_MAX)
 #define AFL_PREV_CALLER_ALIGN (sizeof(PREV_LOC_T) * CTX_MAX_K)
 _Static_assert(AFL_PREV_LOC_ALIGN >= 32,
                "prev_loc alignment must be >= 32 for default-config compat");
@@ -274,13 +274,13 @@ PREV_LOC_T __afl_prev_loc[NGRAM_SIZE_MAX]
     __attribute__((aligned(AFL_PREV_LOC_ALIGN)));
 PREV_LOC_T __afl_prev_caller[CTX_MAX_K]
     __attribute__((aligned(AFL_PREV_CALLER_ALIGN)));
-u32        __afl_prev_ctx;
+u32 __afl_prev_ctx;
 #else
 __thread PREV_LOC_T __afl_prev_loc[NGRAM_SIZE_MAX]
     __attribute__((aligned(AFL_PREV_LOC_ALIGN)));
 __thread PREV_LOC_T __afl_prev_caller[CTX_MAX_K]
     __attribute__((aligned(AFL_PREV_CALLER_ALIGN)));
-__thread u32        __afl_prev_ctx;
+__thread u32 __afl_prev_ctx;
 #endif
 
 struct cmp_map *__afl_cmp_map;

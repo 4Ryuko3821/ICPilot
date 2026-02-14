@@ -253,7 +253,7 @@ class ModuleSanitizerCoverageLTO
   GlobalVariable                  *AFLIJONState = NULL;
   const char                      *ijon_enabled = nullptr;
   Value                           *MapPtrFixed = NULL;
-  Value                           *FuncMapPtr = NULL;
+  Value                           *HoistedMapPtr = NULL;
   AllocaInst                      *CTX_add = NULL;
   std::ofstream                    dFile;
   size_t                           found = 0;
@@ -1812,12 +1812,12 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
 
       if (!vector_cnt) {
 
-        MapPtrIdx = IRB.CreateGEP(Int8Ty, FuncMapPtr, Result);
+        MapPtrIdx = IRB.CreateGEP(Int8Ty, HoistedMapPtr, Result);
 
       } else {
 
         auto element = IRB.CreateExtractElement(Result, vector_cur++);
-        MapPtrIdx = IRB.CreateGEP(Int8Ty, FuncMapPtr, element);
+        MapPtrIdx = IRB.CreateGEP(Int8Ty, HoistedMapPtr, element);
 
       }
 
@@ -1856,16 +1856,16 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
 
   };
 
-  /* Set up FuncMapPtr before the select/switch instrumentation loop,
+  /* Set up HoistedMapPtr before the select/switch instrumentation loop,
      because updateBitmapForResult uses it.  InjectCoverage (called later)
      will reuse the same value. */
   if (map_addr) {
 
-    FuncMapPtr = MapPtrFixed;
+    HoistedMapPtr = MapPtrFixed;
 
-  } else if (AFLMapPtr) {
+  } else {
 
-    FuncMapPtr = hoistMapPointerLoad(F, AFLMapPtr, PtrTy);
+    HoistedMapPtr = hoistMapPointerLoad(F, AFLMapPtr, PtrTy);
 
   }
 
@@ -2342,7 +2342,7 @@ void ModuleSanitizerCoverageLTO::InjectCoverageAtBlock(Function   &F,
 
     /* GEP into the SHM map (pointer loaded once in preamble) */
 
-    Value *MapPtrIdx = IRB.CreateGEP(Int8Ty, FuncMapPtr, val);
+    Value *MapPtrIdx = IRB.CreateGEP(Int8Ty, HoistedMapPtr, val);
 
     /* Update bitmap */
     if (use_threadsafe_counters) {                                /* Atomic */

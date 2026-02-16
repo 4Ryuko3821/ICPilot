@@ -310,6 +310,16 @@ Setting `AFL_LLVM_THREADSAFE_INST` will inject code that implements thread safe
 counters. The overhead is a little bit higher compared to the older non-thread
 safe case. Note that this disables neverzero (see NOT_ZERO).
 
+#### Deny exec* calls
+
+Setting `AFL_LLVM_DENY_EXEC=1` during compilation will cause the instrumented
+binary to abort when any `exec*` family function is called. This is useful to
+prevent coverage map corruption that can occur when a target calls `exec*`
+functions, as the exec'd process will inherit the instrumentation but may not
+be the intended fuzzing target. Only enable this if your target should never
+call exec functions during normal operation.
+
+
 ## 3) Settings for GCC / GCC_PLUGIN modes
 
 There are a few specific features that are only available in GCC and GCC_PLUGIN
@@ -380,6 +390,9 @@ checks or alter some of the more exotic semantics of the tool:
   - Benchmarking only: `AFL_BENCH_JUST_ONE` causes the fuzzer to exit after
     processing the first queue entry; and `AFL_BENCH_UNTIL_CRASH` causes it to
     exit soon after the first crash is found.
+
+  - Setting `AFL_ALLOW_CORES` will allow writing core files on crashes.
+    Not recommended unless you have crashes that do not reproduce stand-alone.
 
   - `AFL_CMPLOG_ONLY_NEW` will only perform the expensive cmplog feature for
     newly found test cases and not for test cases that are loaded on startup
@@ -712,6 +725,18 @@ checks or alter some of the more exotic semantics of the tool:
     still access them. In such case, user should ensure afl-fuzz binary has
     enough privileges to modify the ownership of entities (e.g. CAP\_CHOWN
     capability in Linux system).
+
+  - Setting `AFL_FRAMESHIFT_DISABLE` will disable the frameshift analysis stage.
+    Frameshift automatically discovers size/offset fields in structured inputs
+    and keeps them consistent as mutations insert or delete bytes. Disabling it
+    may be useful for targets that do not consume structured binary formats, or
+    when you want to avoid the overhead of the analysis entirely.
+
+  - `AFL_FRAMESHIFT_MAX_OVERHEAD` controls the maximum fraction of total fuzzing
+    time that frameshift analysis is allowed to consume. The value is a float
+    between `0.0` and `1.0` (default `0.10`, i.e. 10%). If the cumulative time
+    spent in frameshift analysis exceeds this fraction of the overall run time,
+    new analyses are skipped until the ratio drops back under the limit.
 
   - Normally a `README.txt` is written to the `crashes/` directory when a first
     crash is found. Setting `AFL_NO_CRASH_README` will prevent this. Useful when

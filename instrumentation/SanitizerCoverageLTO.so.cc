@@ -205,17 +205,6 @@ class ModuleSanitizerCoverageLTO
   void InjectCoverageAtBlock(Function &F, BasicBlock &BB, size_t Idx,
                              bool IsLeafFunc = true);
 
-  void SetNoSanitizeMetadata(Instruction *I) {
-
-#if LLVM_VERSION_MAJOR >= 19
-    I->setNoSanitizeMetadata();
-#else
-    I->setMetadata(I->getModule()->getMDKindID("nosanitize"),
-                   MDNode::get(*C, None));
-#endif
-
-  }
-
   std::string    getSectionName(const std::string &Section) const;
   FunctionCallee SanCovTracePC /*, SanCovTracePCGuard*/;
   Type *IntptrTy, *IntptrPtrTy, *Int64Ty, *Int64PtrTy, *Int32Ty, *Int32PtrTy,
@@ -264,9 +253,11 @@ class ModuleSanitizerCoverageLTO
   GlobalVariable                  *AFLIJONState = NULL;
   const char                      *ijon_enabled = nullptr;
   Value                           *MapPtrFixed = NULL;
+  Value                           *HoistedMapPtr = NULL;
   AllocaInst                      *CTX_add = NULL;
   std::ofstream                    dFile;
   size_t                           found = 0;
+  bool                             deny_exec = false;
   // AFL++ END
 
 };
@@ -442,6 +433,7 @@ bool ModuleSanitizerCoverageLTO::instrumentModule(
 
   // Check if IJON state-aware coverage is enabled
   ijon_enabled = getenv("AFL_LLVM_IJON");
+  if (getenv("AFL_LLVM_DENY_EXEC")) deny_exec = true;
 
   // If IJON is enabled, check if the module actually uses any IJON functions
   bool uses_ijon_functions = false;
@@ -1128,7 +1120,7 @@ bool ModuleSanitizerCoverageLTO::instrumentModule(
           M, Int64Tyi, true, GlobalValue::ExternalLinkage, 0, "__afl_map_addr");
       ConstantInt *MapAddr = ConstantInt::get(Int64Tyi, map_addr);
       StoreInst   *StoreMapAddr = IRB.CreateStore(MapAddr, AFLMapAddrFixed);
-      ModuleSanitizerCoverageLTO::SetNoSanitizeMetadata(StoreMapAddr);
+      setNoSanitizeMetadata(StoreMapAddr);
 
     }
 
@@ -1143,7 +1135,7 @@ bool ModuleSanitizerCoverageLTO::instrumentModule(
                              "__afl_final_loc");
       ConstantInt *const_loc = ConstantInt::get(Int32Tyi, write_loc);
       StoreInst   *StoreFinalLoc = IRB.CreateStore(const_loc, AFLFinalLoc);
-      ModuleSanitizerCoverageLTO::SetNoSanitizeMetadata(StoreFinalLoc);
+      setNoSanitizeMetadata(StoreFinalLoc);
 
     }
 
@@ -1191,7 +1183,7 @@ bool ModuleSanitizerCoverageLTO::instrumentModule(
                                0, "__afl_dictionary_len");
         ConstantInt *const_len = ConstantInt::get(Int32Tyi, offset);
         StoreInst *StoreDictLen = IRB.CreateStore(const_len, AFLDictionaryLen);
-        ModuleSanitizerCoverageLTO::SetNoSanitizeMetadata(StoreDictLen);
+        setNoSanitizeMetadata(StoreDictLen);
 
         ArrayType *ArrayTy = ArrayType::get(IntegerType::get(Ctx, 8), offset);
         GlobalVariable *AFLInternalDictionary = new GlobalVariable(
@@ -1210,7 +1202,7 @@ bool ModuleSanitizerCoverageLTO::instrumentModule(
         Value *AFLDictOff = IRB.CreateGEP(Int8Ty, AFLInternalDictionary, Zero);
         Value *AFLDictPtr = IRB.CreatePointerCast(AFLDictOff, PtrTy);
         StoreInst *StoreDict = IRB.CreateStore(AFLDictPtr, AFLDictionary);
-        ModuleSanitizerCoverageLTO::SetNoSanitizeMetadata(StoreDict);
+        setNoSanitizeMetadata(StoreDict);
 
       }
 
@@ -1445,6 +1437,30 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
 
     // we have to set __afl_ctx 0 for all indirect calls in all functions, even
     // those not to be instrumented.
+
+    // AFL++ START
+    if (deny_exec) {
+
+      FunctionCallee AbortFn = F.getParent()->getOrInsertFunction(
+          "abort", AttributeList{}, Type::getVoidTy(Context));
+      for (auto &BB : F) {
+
+        for (auto &IN : BB) {
+
+          if (isExecCall(&IN)) {
+
+            IRBuilder<> IRB(&IN);
+            IRB.CreateCall(AbortFn);
+
+          }
+
+        }
+
+      }
+
+    }
+
+    // AFL++ END
     for (auto &BB : F) {
 
       for (auto &IN : BB) {
@@ -1769,7 +1785,7 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
         IRB.getInt32Ty(),
 #endif
         CTX_add);
-    ModuleSanitizerCoverageLTO::SetNoSanitizeMetadata(CTX_load);
+    setNoSanitizeMetadata(CTX_load);
     return IRB.CreateAdd(V, CTX_load);
 
   };
@@ -1788,9 +1804,7 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
   auto updateBitmapForResult = [&](IRBuilder<> &IRB, Value *Result,
                                    uint32_t vector_cnt) {
 
-    uint32_t  vector_cur = 0;
-    LoadInst *MapPtr = IRB.CreateLoad(PtrTy, AFLMapPtr);
-    ModuleSanitizerCoverageLTO::SetNoSanitizeMetadata(MapPtr);
+    uint32_t vector_cur = 0;
 
     while (1) {
 
@@ -1798,12 +1812,12 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
 
       if (!vector_cnt) {
 
-        MapPtrIdx = IRB.CreateGEP(Int8Ty, MapPtr, Result);
+        MapPtrIdx = IRB.CreateGEP(Int8Ty, HoistedMapPtr, Result);
 
       } else {
 
         auto element = IRB.CreateExtractElement(Result, vector_cur++);
-        MapPtrIdx = IRB.CreateGEP(Int8Ty, MapPtr, element);
+        MapPtrIdx = IRB.CreateGEP(Int8Ty, HoistedMapPtr, element);
 
       }
 
@@ -1821,21 +1835,18 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
       } else {
 
         LoadInst *Counter = IRB.CreateLoad(IRB.getInt8Ty(), MapPtrIdx);
-        ModuleSanitizerCoverageLTO::SetNoSanitizeMetadata(Counter);
+        setNoSanitizeMetadata(Counter);
 
         Value *Incr = IRB.CreateAdd(Counter, One);
 
         if (skip_nozero == NULL) {
 
-          auto cf = IRB.CreateICmpEQ(Incr, Zero);
-          markAflSkip(cf);
-          auto carry = IRB.CreateZExt(cf, Int8Ty);
-          Incr = IRB.CreateAdd(Incr, carry);
+          Incr = IRB.CreateBinaryIntrinsic(Intrinsic::umax, Incr, One);
 
         }
 
         auto nosan = IRB.CreateStore(Incr, MapPtrIdx);
-        ModuleSanitizerCoverageLTO::SetNoSanitizeMetadata(nosan);
+        setNoSanitizeMetadata(nosan);
 
       }
 
@@ -1844,6 +1855,19 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
     }
 
   };
+
+  /* Set up HoistedMapPtr before the select/switch instrumentation loop,
+     because updateBitmapForResult uses it.  InjectCoverage (called later)
+     will reuse the same value. */
+  if (map_addr) {
+
+    HoistedMapPtr = MapPtrFixed;
+
+  } else {
+
+    HoistedMapPtr = hoistMapPointerLoad(F, AFLMapPtr, PtrTy);
+
+  }
 
   for (auto &BB : F) {
 
@@ -2239,17 +2263,6 @@ void ModuleSanitizerCoverageLTO::InjectCoverageAtBlock(Function   &F,
   BasicBlock::iterator IP = BB.getFirstInsertionPt();
   bool                 IsEntryBB = &BB == &F.getEntryBlock();
 
-  auto markAflSkip = [&](Value *V) {
-
-    if (auto *InstV = dyn_cast<Instruction>(V)) {
-
-      LLVMContext &Ctx = InstV->getContext();
-      InstV->setMetadata("afl.skip", MDNode::get(Ctx, {}));
-
-    }
-
-  };
-
   if (IsEntryBB) {
 
     // Keep static allocas and llvm.localescape calls in the entry block.  Even
@@ -2297,7 +2310,7 @@ void ModuleSanitizerCoverageLTO::InjectCoverageAtBlock(Function   &F,
           IRB.getInt32Ty(),
 #endif
           CTX_add);
-      ModuleSanitizerCoverageLTO::SetNoSanitizeMetadata(CTX_load);
+      setNoSanitizeMetadata(CTX_load);
       val = IRB.CreateAdd(CurLoc, CTX_load);
 
     }
@@ -2306,31 +2319,19 @@ void ModuleSanitizerCoverageLTO::InjectCoverageAtBlock(Function   &F,
     if (ijon_enabled && AFLIJONState) {
 
       LoadInst *IJONStateVal = IRB.CreateLoad(Int32Tyi, AFLIJONState);
-      ModuleSanitizerCoverageLTO::SetNoSanitizeMetadata(IJONStateVal);
+      setNoSanitizeMetadata(IJONStateVal);
       // Apply IJON formula: state XOR coverage_index
       Value *XorResult = IRB.CreateXor(IJONStateVal, val);
       // Ensure result stays within map bounds to prevent buffer overruns
       LoadInst *CovMapSize = IRB.CreateLoad(Int32Tyi, AFLCovMapSize);
-      ModuleSanitizerCoverageLTO::SetNoSanitizeMetadata(CovMapSize);
+      setNoSanitizeMetadata(CovMapSize);
       val = IRB.CreateURem(XorResult, CovMapSize);
 
     }
 
-    /* Load SHM pointer */
+    /* GEP into the SHM map (pointer loaded once in preamble) */
 
-    Value *MapPtrIdx;
-
-    if (map_addr) {
-
-      MapPtrIdx = IRB.CreateGEP(Int8Ty, MapPtrFixed, val);
-
-    } else {
-
-      LoadInst *MapPtr = IRB.CreateLoad(PtrTy, AFLMapPtr);
-      ModuleSanitizerCoverageLTO::SetNoSanitizeMetadata(MapPtr);
-      MapPtrIdx = IRB.CreateGEP(Int8Ty, MapPtr, val);
-
-    }
+    Value *MapPtrIdx = IRB.CreateGEP(Int8Ty, HoistedMapPtr, val);
 
     /* Update bitmap */
     if (use_threadsafe_counters) {                                /* Atomic */
@@ -2344,21 +2345,18 @@ void ModuleSanitizerCoverageLTO::InjectCoverageAtBlock(Function   &F,
     } else {
 
       LoadInst *Counter = IRB.CreateLoad(IRB.getInt8Ty(), MapPtrIdx);
-      ModuleSanitizerCoverageLTO::SetNoSanitizeMetadata(Counter);
+      setNoSanitizeMetadata(Counter);
 
       Value *Incr = IRB.CreateAdd(Counter, One);
 
       if (skip_nozero == NULL) {
 
-        auto cf = IRB.CreateICmpEQ(Incr, Zero);
-        markAflSkip(cf);
-        auto carry = IRB.CreateZExt(cf, Int8Tyi);
-        Incr = IRB.CreateAdd(Incr, carry);
+        Incr = IRB.CreateBinaryIntrinsic(Intrinsic::umax, Incr, One);
 
       }
 
       auto nosan = IRB.CreateStore(Incr, MapPtrIdx);
-      ModuleSanitizerCoverageLTO::SetNoSanitizeMetadata(nosan);
+      setNoSanitizeMetadata(nosan);
 
     }
 

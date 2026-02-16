@@ -162,28 +162,16 @@ class ModuleSanitizerCoverageAFL
   void   setupIJONSymbols(Module &M, bool uses_ijon_state);
   Value *createGuardPointer(IRBuilder<> &IRB, uint32_t index);
   void   updateCoverageBitmap(IRBuilder<> &IRB, Value *CoverageIndex,
-                              LoadInst *MapPtr);
+                              Value *MapPtr);
   void   printDebugInfo(Instruction &IN);
   Value *instrumentVectorSelect(IRBuilder<> &IRB, Value *condition,
                                 FixedVectorType *tt, uint32_t &local_selects,
                                 uint32_t cnt_cov, uint32_t skip_blocks,
                                 uint32_t               special,
                                 ArrayRef<BasicBlock *> AllBlocks);
-  void   updateCoverageForSelect(IRBuilder<> &IRB, Value *result,
-                                 LoadInst *MapPtr, uint32_t &vector_cnt);
-
-  void SetNoSanitizeMetadata(Instruction *I) {
-
-#if LLVM_MAJOR >= 19
-    I->setNoSanitizeMetadata();
-#elif LLVM_MAJOR >= 16
-    I->setMetadata(LLVMContext::MD_nosanitize, MDNode::get(*C, std::nullopt));
-#else
-    I->setMetadata(I->getModule()->getMDKindID("nosanitize"),
-                   MDNode::get(*C, None));
-#endif
-
-  }
+  void   updateCoverageForSelect(IRBuilder<> &IRB, Value *result, Value *MapPtr,
+                                 uint32_t &vector_cnt);
+  void   setNoInstrumentMetadata(Value *V);
 
   std::string     getSectionName(const std::string &Section) const;
   std::string     getSectionStart(const std::string &Section) const;
@@ -208,8 +196,10 @@ class ModuleSanitizerCoverageAFL
   GlobalVariable *AFLMapPtr = NULL;
   GlobalVariable *AFLCovMapSize = NULL;
   GlobalVariable *AFLIJONState = NULL;
+  Value          *FuncMapPtr = NULL;
   ConstantInt    *One = NULL;
   ConstantInt    *Zero = NULL;
+  bool            deny_exec = false;
 
 };
 
@@ -384,6 +374,7 @@ void ModuleSanitizerCoverageAFL::setupEnvironmentVariables() {
   skip_nozero = getenv("AFL_LLVM_SKIP_NEVERZERO");
   use_threadsafe_counters = getenv("AFL_LLVM_THREADSAFE_INST");
   ijon_enabled = getenv("AFL_LLVM_IJON");
+  if (getenv("AFL_LLVM_DENY_EXEC")) { deny_exec = true; }
 
 }
 
@@ -397,9 +388,24 @@ Value *ModuleSanitizerCoverageAFL::createGuardPointer(IRBuilder<> &IRB,
 
 }
 
+void ModuleSanitizerCoverageAFL::setNoInstrumentMetadata(Value *V) {
+
+  // IRBuilder may constant-fold Create* calls and return a Constant instead of
+  // an Instruction.  Constants never appear in the basic-block instruction
+  // list, so they will not be visited during the instrumentation loop —
+  // skipping them here is safe.
+  if (auto *I = dyn_cast<Instruction>(V)) {
+
+    MDNode *Tag = MDNode::get(I->getContext(), {});
+    I->setMetadata("afl.skip", Tag);
+
+  }
+
+}
+
 void ModuleSanitizerCoverageAFL::updateCoverageBitmap(IRBuilder<> &IRB,
-                                                      Value    *CoverageIndex,
-                                                      LoadInst *MapPtr) {
+                                                      Value *CoverageIndex,
+                                                      Value *MapPtr) {
 
   Value *MapPtrIdx = IRB.CreateGEP(Int8Ty, MapPtr, CoverageIndex);
 
@@ -408,32 +414,23 @@ void ModuleSanitizerCoverageAFL::updateCoverageBitmap(IRBuilder<> &IRB,
     auto instr = IRB.CreateAtomicRMW(llvm::AtomicRMWInst::BinOp::Add, MapPtrIdx,
                                      One, llvm::MaybeAlign(1),
                                      llvm::AtomicOrdering::Monotonic);
-    auto        *INSTR = llvm::cast<llvm::Instruction>(instr);
-    LLVMContext &Ctx = INSTR->getContext();
-    MDNode      *Tag = MDNode::get(Ctx, {});
-    INSTR->setMetadata("afl.skip", Tag);
+    setNoInstrumentMetadata(instr);
 
   } else {
 
     LoadInst *Counter = IRB.CreateLoad(IRB.getInt8Ty(), MapPtrIdx);
-    SetNoSanitizeMetadata(Counter);
+    setNoSanitizeMetadata(Counter);
 
     Value *Incr = IRB.CreateAdd(Counter, One);
 
     if (skip_nozero == NULL) {
 
-      auto         cf = IRB.CreateICmpEQ(Incr, Zero);
-      auto        *CF = llvm::cast<llvm::Instruction>(cf);
-      LLVMContext &Ctx = CF->getContext();
-      MDNode      *Tag = MDNode::get(Ctx, {});
-      CF->setMetadata("afl.skip", Tag);
-      auto carry = IRB.CreateZExt(cf, Int8Ty);
-      Incr = IRB.CreateAdd(Incr, carry);
+      Incr = IRB.CreateBinaryIntrinsic(Intrinsic::umax, Incr, One);
 
     }
 
     StoreInst *StoreCtx = IRB.CreateStore(Incr, MapPtrIdx);
-    SetNoSanitizeMetadata(StoreCtx);
+    setNoSanitizeMetadata(StoreCtx);
 
   }
 
@@ -499,7 +496,7 @@ Value *ModuleSanitizerCoverageAFL::instrumentVectorSelect(
 
 void ModuleSanitizerCoverageAFL::updateCoverageForSelect(IRBuilder<> &IRB,
                                                          Value       *result,
-                                                         LoadInst    *MapPtr,
+                                                         Value       *MapPtr,
                                                          uint32_t &vector_cnt) {
 
   uint32_t vector_cur = 0;
@@ -511,7 +508,7 @@ void ModuleSanitizerCoverageAFL::updateCoverageForSelect(IRBuilder<> &IRB,
     if (!vector_cnt) {
 
       LoadInst *CurLoc = IRB.CreateLoad(IRB.getInt32Ty(), result);
-      SetNoSanitizeMetadata(CurLoc);
+      setNoSanitizeMetadata(CurLoc);
       MapPtrIdx = IRB.CreateGEP(Int8Ty, MapPtr, CurLoc);
 
     } else {
@@ -519,42 +516,33 @@ void ModuleSanitizerCoverageAFL::updateCoverageForSelect(IRBuilder<> &IRB,
       auto element = IRB.CreateExtractElement(result, vector_cur++);
       auto elementptr = IRB.CreateIntToPtr(element, Int32PtrTy);
       auto elementld = IRB.CreateLoad(IRB.getInt32Ty(), elementptr);
-      SetNoSanitizeMetadata(elementld);
+      setNoSanitizeMetadata(elementld);
       MapPtrIdx = IRB.CreateGEP(Int8Ty, MapPtr, elementld);
 
     }
 
     if (use_threadsafe_counters) {
 
-      auto         instr = IRB.CreateAtomicRMW(llvm::AtomicRMWInst::BinOp::Add,
-                                               MapPtrIdx, One, llvm::MaybeAlign(1),
-                                               llvm::AtomicOrdering::Monotonic);
-      auto        *INSTR = llvm::cast<llvm::Instruction>(instr);
-      LLVMContext &Ctx = INSTR->getContext();
-      MDNode      *Tag = MDNode::get(Ctx, {});
-      INSTR->setMetadata("afl.skip", Tag);
+      auto instr = IRB.CreateAtomicRMW(llvm::AtomicRMWInst::BinOp::Add,
+                                       MapPtrIdx, One, llvm::MaybeAlign(1),
+                                       llvm::AtomicOrdering::Monotonic);
+      setNoInstrumentMetadata(instr);
 
     } else {
 
       LoadInst *Counter = IRB.CreateLoad(IRB.getInt8Ty(), MapPtrIdx);
-      SetNoSanitizeMetadata(Counter);
+      setNoSanitizeMetadata(Counter);
 
       Value *Incr = IRB.CreateAdd(Counter, One);
 
       if (skip_nozero == NULL) {
 
-        auto         cf = IRB.CreateICmpEQ(Incr, Zero);
-        auto        *CF = llvm::cast<llvm::Instruction>(cf);
-        LLVMContext &Ctx = CF->getContext();
-        MDNode      *Tag = MDNode::get(Ctx, {});
-        CF->setMetadata("afl.skip", Tag);
-        auto carry = IRB.CreateZExt(cf, Int8Ty);
-        Incr = IRB.CreateAdd(Incr, carry);
+        Incr = IRB.CreateBinaryIntrinsic(Intrinsic::umax, Incr, One);
 
       }
 
       StoreInst *StoreCtx = IRB.CreateStore(Incr, MapPtrIdx);
-      SetNoSanitizeMetadata(StoreCtx);
+      setNoSanitizeMetadata(StoreCtx);
 
     }
 
@@ -860,6 +848,29 @@ void ModuleSanitizerCoverageAFL::instrumentFunction(
   const DominatorTree     *DT = DTCallback(F);
   const PostDominatorTree *PDT = PDTCallback(F);
 
+  // AFL++ START
+  if (deny_exec) {
+
+    FunctionCallee AbortFn = F.getParent()->getOrInsertFunction(
+        "abort", AttributeList{}, Type::getVoidTy(*C));
+    for (auto &BB : F) {
+
+      for (auto &IN : BB) {
+
+        if (isExecCall(&IN)) {
+
+          IRBuilder<> IRB(&IN);
+          IRB.CreateCall(AbortFn);
+
+        }
+
+      }
+
+    }
+
+  }
+
+  // AFL++ END
   for (auto &BB : F) {
 
     if (shouldInstrumentBlock(F, &BB, DT, PDT, Options))
@@ -1020,31 +1031,17 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
 
         } else if (cxchg) {
 
-          if (cxchg->getType()->isIntegerTy(1)) {
-
-            block_is_instrumented = true;
-            cnt_sel++;
-            cnt_sel_inc += 2;
-
-          } else {
-
-            unhandled++;
-
-          }
+          // cmpxchg returns {T, i1}, always a struct — no type guard needed
+          block_is_instrumented = true;
+          cnt_sel++;
+          cnt_sel_inc += 2;
 
         } else if (rmw) {
 
-          if (rmw->getType()->isIntegerTy(1)) {
-
-            block_is_instrumented = true;
-            cnt_sel++;
-            cnt_sel_inc += 2;
-
-          } else {
-
-            unhandled++;
-
-          }
+          // atomicrmw returns the old value (e.g. i32) — no type guard needed
+          block_is_instrumented = true;
+          cnt_sel++;
+          cnt_sel_inc += 2;
 
         } else if ((selectInst = dyn_cast<SelectInst>(&IN))) {
 
@@ -1116,6 +1113,9 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
   if (first) { first = 0; }
   selects += cnt_sel;
 
+  FuncMapPtr = NULL;
+  if (AFLMapPtr) { FuncMapPtr = hoistMapPointerLoad(F, AFLMapPtr, PtrTy); }
+
   uint32_t special = 0, local_selects = 0;
 
   for (auto &BB : F) {
@@ -1141,7 +1141,7 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
         Value *GuardPtr = createGuardPointer(
             IRB, special++ + local_selects + AllBlocks.size() - skip_blocks);
         LoadInst *Idx = IRB.CreateLoad(IRB.getInt32Ty(), GuardPtr);
-        SetNoSanitizeMetadata(Idx);
+        setNoSanitizeMetadata(Idx);
 
         auto *callInst = dyn_cast<CallInst>(&IN);
         callInst->setOperand(1, Idx);
@@ -1179,13 +1179,8 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
           Value *GuardPtr2 =
               createGuardPointer(IRB, cnt_cov + special + local_selects++ +
                                           AllBlocks.size() - skip_blocks);
-          continue;
           result = IRB.CreateSelect(res, GuardPtr1, GuardPtr2);
-
-          auto        *RES = llvm::cast<llvm::Instruction>(result);
-          LLVMContext &Ctx = RES->getContext();
-          MDNode      *Tag = MDNode::get(Ctx, {});
-          RES->setMetadata("afl.skip", Tag);
+          setNoInstrumentMetadata(result);
           // fprintf(stderr, "Icmp!\n");
 
         } else if (fcmp) {
@@ -1202,15 +1197,10 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
               createGuardPointer(IRB, cnt_cov + special + local_selects++ +
                                           AllBlocks.size() - skip_blocks);
           result = IRB.CreateSelect(res, GuardPtr1, GuardPtr2);
-          auto        *RES = llvm::cast<llvm::Instruction>(result);
-          LLVMContext &Ctx = RES->getContext();
-          MDNode      *Tag = MDNode::get(Ctx, {});
-          RES->setMetadata("afl.skip", Tag);
+          setNoInstrumentMetadata(result);
           // fprintf(stderr, "Fcmp!\n");
 
         } else if (cxchg) {
-
-          if (!cxchg->getType()->isIntegerTy(1)) { continue; }
 
           if (debug) printDebugInfo(IN);
 
@@ -1224,10 +1214,7 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
               createGuardPointer(IRB, cnt_cov + special + local_selects++ +
                                           AllBlocks.size() - skip_blocks);
           result = IRB.CreateSelect(res, GuardPtr1, GuardPtr2);
-          auto        *RES = llvm::cast<llvm::Instruction>(result);
-          LLVMContext &Ctx = RES->getContext();
-          MDNode      *Tag = MDNode::get(Ctx, {});
-          RES->setMetadata("afl.skip", Tag);
+          setNoInstrumentMetadata(result);
           // fprintf(stderr, "Cxchg!\n");
 
         } else if (rmw) {
@@ -1287,10 +1274,7 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
               createGuardPointer(IRB, cnt_cov + special + local_selects++ +
                                           AllBlocks.size() - skip_blocks);
           result = IRB.CreateSelect(res, GuardPtr1, GuardPtr2);
-          auto        *RES = llvm::cast<llvm::Instruction>(result);
-          LLVMContext &Ctx = RES->getContext();
-          MDNode      *Tag = MDNode::get(Ctx, {});
-          RES->setMetadata("afl.skip", Tag);
+          setNoInstrumentMetadata(result);
           // fprintf(stderr, "Rmw!\n");
 
         } else if ((selectInst = dyn_cast<SelectInst>(&IN))) {
@@ -1307,10 +1291,7 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
                 createGuardPointer(IRB, cnt_cov + special + local_selects++ +
                                             AllBlocks.size() - skip_blocks);
             result = IRB.CreateSelect(condition, GuardPtr1, GuardPtr2);
-            auto        *RES = llvm::cast<llvm::Instruction>(result);
-            LLVMContext &Ctx = RES->getContext();
-            MDNode      *Tag = MDNode::get(Ctx, {});
-            RES->setMetadata("afl.skip", Tag);
+            setNoInstrumentMetadata(result);
 
           } else
 
@@ -1323,10 +1304,7 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
               result = instrumentVectorSelect(IRB, condition, tt, local_selects,
                                               cnt_cov, skip_blocks, special,
                                               AllBlocks);
-              auto        *RES = llvm::cast<llvm::Instruction>(result);
-              LLVMContext &Ctx = RES->getContext();
-              MDNode      *Tag = MDNode::get(Ctx, {});
-              RES->setMetadata("afl.skip", Tag);
+              setNoInstrumentMetadata(result);
 
             }
 
@@ -1347,11 +1325,7 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
 
         }
 
-        // Load SHM pointer and update coverage bitmap
-        LoadInst *MapPtr = IRB.CreateLoad(PtrTy, AFLMapPtr);
-        SetNoSanitizeMetadata(MapPtr);
-
-        updateCoverageForSelect(IRB, result, MapPtr, vector_cnt);
+        updateCoverageForSelect(IRB, result, FuncMapPtr, vector_cnt);
         instr += vector_cnt;
 
       }
@@ -1434,12 +1408,7 @@ void ModuleSanitizerCoverageAFL::InjectCoverageAtBlock(Function   &F,
     Value *GuardPtr = createGuardPointer(IRB, Idx);
 
     LoadInst *CurLoc = IRB.CreateLoad(IRB.getInt32Ty(), GuardPtr);
-    ModuleSanitizerCoverageAFL::SetNoSanitizeMetadata(CurLoc);
-
-    /* Load SHM pointer */
-
-    LoadInst *MapPtr = IRB.CreateLoad(PtrTy, AFLMapPtr);
-    ModuleSanitizerCoverageAFL::SetNoSanitizeMetadata(MapPtr);
+    setNoSanitizeMetadata(CurLoc);
 
     /* Load counter for CurLoc */
 
@@ -1449,17 +1418,17 @@ void ModuleSanitizerCoverageAFL::InjectCoverageAtBlock(Function   &F,
     if (ijon_enabled && AFLIJONState) {
 
       LoadInst *IJONStateVal = IRB.CreateLoad(Int32Ty, AFLIJONState);
-      SetNoSanitizeMetadata(IJONStateVal);
+      setNoSanitizeMetadata(IJONStateVal);
       // Apply IJON formula: state XOR coverage_index
       Value *XorResult = IRB.CreateXor(IJONStateVal, CoverageIndex);
       // Ensure result stays within map bounds to prevent buffer overruns
       LoadInst *CovMapSize = IRB.CreateLoad(Int32Ty, AFLCovMapSize);
-      SetNoSanitizeMetadata(CovMapSize);
+      setNoSanitizeMetadata(CovMapSize);
       CoverageIndex = IRB.CreateURem(XorResult, CovMapSize);
 
     }
 
-    updateCoverageBitmap(IRB, CoverageIndex, MapPtr);
+    updateCoverageBitmap(IRB, CoverageIndex, FuncMapPtr);
 
     // done :)
 

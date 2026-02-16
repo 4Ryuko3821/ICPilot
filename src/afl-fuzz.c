@@ -343,6 +343,7 @@ static void usage(u8 *argv0, int more_help) {
       "              (must contain abort_on_error=1 and symbolize=0)\n"
       "MSAN_OPTIONS: custom settings for MSAN\n"
       "              (must contain exitcode="STRINGIFY(MSAN_ERROR)" and symbolize=0)\n"
+      "AFL_ALLOW_CORES: allow creating core files of target crashes\n"
       "AFL_AUTORESUME: resume fuzzing if directory specified by -o already exists\n"
       "AFL_BENCH_JUST_ONE: run the target just once\n"
       "AFL_BENCH_UNTIL_CRASH: exit soon when the first crashing input has been found\n"
@@ -564,6 +565,30 @@ static void fasan_check_afl_preload(char *afl_preload) {
   }
 
   OKF("Found ASAN DSO: %s", first_preload);
+
+}
+
+/* Throttle syncs by `sync_time` and `sync_interval_cnt`. Pass NULL for
+   sync_interval_cnt to only limit by sync_time. Main node sync time is half of
+   secondary nodes, and a third of SYNC_INTERVAL
+ */
+static void maybe_sync_fuzzers(afl_state_t *afl, u64 cur_time,
+                               u32 *sync_interval_cnt) {
+
+  u64 sync_time = afl->is_main_node ? afl->sync_time >> 1 : afl->sync_time;
+
+  if (unlikely(cur_time > sync_time + afl->last_sync_time)) {
+
+    u32 sync_interval = afl->is_main_node ? SYNC_INTERVAL / 3 : SYNC_INTERVAL;
+
+    if (NULL == sync_interval_cnt ||
+        !((*sync_interval_cnt)++ % sync_interval)) {
+
+      sync_fuzzers(afl);
+
+    }
+
+  }
 
 }
 
@@ -2016,6 +2041,18 @@ int main(int argc, char **argv_orig, char **envp) {
 
   OKF("Generating fuzz data with a length of min=%u max=%u", afl->min_length,
       afl->max_length);
+
+  if (afl->afl_env.afl_frameshift_disabled) {
+
+    OKF("FrameShift status: disabled");
+
+  } else {
+
+    OKF("FrameShift status: enabled (%.0f%% overhead configured)",
+        afl->afl_env.afl_frameshift_max_overhead * 100);
+
+  }
+
   u32 min_alloc = MAX(64U, afl->min_length);
   afl_realloc(AFL_BUF_PARAM(in_scratch), min_alloc);
   afl_realloc(AFL_BUF_PARAM(in), min_alloc);
@@ -3141,6 +3178,11 @@ int main(int argc, char **argv_orig, char **envp) {
 
     }
 
+    // Kill the forkserver that might have been started by
+    // afl_fsrv_get_mapsize() earlier, so we don't leak an orphaned forkserver
+    // process and its pipe fds.
+    afl_fsrv_kill(&afl->fsrv);
+
     afl_fsrv_start(&afl->fsrv, afl->argv, &afl->stop_soon,
                    afl->afl_env.afl_debug_child);
 
@@ -3347,7 +3389,8 @@ int main(int argc, char **argv_orig, char **envp) {
 
         }
 
-        sync_fuzzers(afl);
+        /* sync only based on sync_time, not sync_interval_cnt */
+        maybe_sync_fuzzers(afl, get_cur_time(), NULL);
 
       }
 
@@ -3678,27 +3721,7 @@ int main(int argc, char **argv_orig, char **envp) {
 
     if (likely(!afl->stop_soon && afl->sync_id)) {
 
-      if (unlikely(afl->is_main_node)) {
-
-        if (unlikely(cur_time > (afl->sync_time >> 1) + afl->last_sync_time)) {
-
-          if (!(sync_interval_cnt++ % (SYNC_INTERVAL / 3))) {
-
-            sync_fuzzers(afl);
-
-          }
-
-        }
-
-      } else {
-
-        if (unlikely(cur_time > afl->sync_time + afl->last_sync_time)) {
-
-          if (!(sync_interval_cnt++ % SYNC_INTERVAL)) { sync_fuzzers(afl); }
-
-        }
-
-      }
+      maybe_sync_fuzzers(afl, cur_time, &sync_interval_cnt);
 
     }
 

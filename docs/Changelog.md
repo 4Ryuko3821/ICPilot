@@ -6,12 +6,24 @@
 
 ### Version ++4.36a (dev)
   - afl-fuzz:
+    - FrameShift integrated and enabled by default, disable with
+      AFL_FRAMESHIFT_DISABLE and configure effort via
+      AFL_FRAMESHIFT_MAX_OVERHEAD. In extensive fuzzbench analysis at worst
+      (on average) it does nothing, at best it improves time to new coverage
+      and total coverage unlocked. https://arxiv.org/pdf/2507.05421
+      Thanks to @hgarrereyn for the PR!
     - added `AFL_FORCE_FASTRESUME` which will ignore the saved hash of the
       target - but note it will only work if the coverage map size did not
       change
+    - prevent further executed instrumented programs by the fuzz target to
+      manipulate the coverage
   - afl-cc:
     - LLVM 22 support (they are again switching around include files ...)
     - g_/curl_/xml_ string support for COMPCOV, thanks to @Prajwal-kp-18
+    - env `AFL_LLVM_DENY_EXEC` will abort any common exec calls
+    - marked GCC plugins as unmaintained. We need someone who know gimple and
+      is willing to fix the plugin issues, workarounds for gcc bugs and
+      overall improve the plugin.
   - afl-cmin:
     - new implementation in C by @kcwu - thanks! (it is the default now)
     - afl-cmin.py was changing behaviour to hash the original filenames,
@@ -19,6 +31,8 @@
     - afl-cmin and afl-cmin.py honor `AFL_SHA1_FILENAMES` now
   - afl-showmap:
     - -f support added by Prajwal-kp-18 - thanks!
+  - qemu_mode:
+    - fix when AFL_EXITPOINT is not set, which could prevent detecting crashes
 
 
 ### Version ++4.35a (release)

@@ -52,6 +52,7 @@ void                   scanForDangerousFunctions(llvm::Module *M);
 unsigned int           calcCyclomaticComplexity(llvm::Function *F);
 bool                   isAflCovInterestingInstruction(llvm::Instruction &I);
 bool                   isDecisionUse(const llvm::Value *Cond);
+bool                   isExecCall(llvm::Instruction *IN);
 std::pair<bool, bool>  detectIJONUsage(llvm::Module &M);
 void createIJONEnabledGlobal(llvm::Module &M, llvm::Type *Int32Ty);
 llvm::GlobalVariable *createIJONStateGlobal(llvm::Module &M,
@@ -66,6 +67,56 @@ IS_EXTERN int debug;
 IS_EXTERN int be_quiet;
 
 #undef IS_EXTERN
+
+[[noreturn]] inline void release_assert_fail(const char *msg) {
+
+  llvm::errs() << "AFL++ ERROR: " << msg << "\n";
+  abort();
+
+}
+
+#define release_assert(cond, msg)              \
+  do {                                         \
+                                               \
+    if (!(cond)) { release_assert_fail(msg); } \
+                                               \
+  } while (0)
+
+/* Mark an instruction so sanitizer passes ignore it. */
+inline void setNoSanitizeMetadata(llvm::Instruction *I) {
+
+#if LLVM_VERSION_MAJOR >= 19
+  I->setNoSanitizeMetadata();
+#elif LLVM_VERSION_MAJOR >= 16
+  I->setMetadata(llvm::LLVMContext::MD_nosanitize,
+                 llvm::MDNode::get(I->getContext(), std::nullopt));
+#else
+  I->setMetadata(I->getModule()->getMDKindID("nosanitize"),
+                 llvm::MDNode::get(I->getContext(), llvm::None));
+#endif
+
+}
+
+/* Load __afl_area_ptr once at function entry and return the loaded value.
+   Creates a preamble basic block so later per-block instrumentation never
+   sees or displaces this load.  The load is marked invariant because
+   __afl_area_ptr is set once at process start and never changes. */
+inline llvm::Value *hoistMapPointerLoad(llvm::Function       &F,
+                                        llvm::GlobalVariable *AFLMapPtr,
+                                        llvm::Type           *PtrTy) {
+
+  using namespace llvm;
+  LLVMContext &Ctx = F.getContext();
+  BasicBlock  *OldEntry = &F.getEntryBlock();
+  BasicBlock  *Preamble = BasicBlock::Create(Ctx, "afl.entry", &F, OldEntry);
+  IRBuilder<>  IRB(Preamble);
+  auto        *Load = IRB.CreateLoad(PtrTy, AFLMapPtr);
+  setNoSanitizeMetadata(Load);
+  Load->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(Ctx, {}));
+  IRB.CreateBr(OldEntry);
+  return Load;
+
+}
 
 #endif
 

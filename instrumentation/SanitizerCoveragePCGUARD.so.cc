@@ -331,6 +331,7 @@ bool ModuleSanitizerCoverageAFL::isAflInterestingCall(Instruction &IN) {
 
   Function *Callee = callInst->getCalledFunction();
   if (!Callee) return false;
+  if (Callee->isIntrinsic()) return false;
   if (callInst->getCallingConv() != llvm::CallingConv::C) return false;
 
   StringRef FuncName = Callee->getName();
@@ -957,6 +958,7 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
 
         Function *Callee = callInst->getCalledFunction();
         if (!Callee) continue;
+        if (Callee->isIntrinsic()) continue;
         if (callInst->getCallingConv() != llvm::CallingConv::C) continue;
 
         StringRef FuncName = Callee->getName();

@@ -760,7 +760,7 @@ bool isExecCall(llvm::Instruction *IN) {
   if (!callInst) return false;
 
   llvm::Function *Callee = callInst->getCalledFunction();
-  if (!Callee || !Callee->hasName()) return false;
+  if (!Callee || !Callee->hasName() || Callee->isIntrinsic()) return false;
 
   return llvm::StringSwitch<bool>(Callee->getName())
       .Cases("execve", "execl", "execlp", "execle", true)

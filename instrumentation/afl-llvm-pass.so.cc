@@ -483,9 +483,12 @@ PreservedAnalyses AFLCoverage::run(Module &M, ModuleAnalysisManager &MAM) {
             if ((callInst = dyn_cast<CallInst>(&IN))) {
 
               Function *Callee = callInst->getCalledFunction();
-              if (!Callee || Callee->size() < function_minimum_size)
+              if (!Callee || Callee->size() < function_minimum_size ||
+                  Callee->isIntrinsic()) {
+
                 continue;
-              else {
+
+              } else {
 
                 has_calls = 1;
                 break;

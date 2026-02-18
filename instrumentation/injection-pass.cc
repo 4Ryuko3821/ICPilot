@@ -145,6 +145,7 @@ bool InjectionRoutines::hookRtns(Module &M) {
 
           Function *Callee = callInst->getCalledFunction();
           if (!Callee) continue;
+          if (Callee->isIntrinsic()) continue;
           if (callInst->getCallingConv() != llvm::CallingConv::C) continue;
 
           std::string FuncName = Callee->getName().str();

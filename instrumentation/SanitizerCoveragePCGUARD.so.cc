@@ -196,7 +196,7 @@ class ModuleSanitizerCoverageAFL
   GlobalVariable *AFLMapPtr = NULL;
   GlobalVariable *AFLCovMapSize = NULL;
   GlobalVariable *AFLIJONState = NULL;
-  Value          *FuncMapPtr = NULL;
+  Value          *HoistedMapPtr = NULL;
   ConstantInt    *One = NULL;
   ConstantInt    *Zero = NULL;
   bool            deny_exec = false;
@@ -1115,8 +1115,12 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
   if (first) { first = 0; }
   selects += cnt_sel;
 
-  FuncMapPtr = NULL;
-  if (AFLMapPtr) { FuncMapPtr = hoistMapPointerLoad(F, AFLMapPtr, PtrTy); }
+  HoistedMapPtr = NULL;
+  /* hoistMapPointerLoad inserts a new entry block (preamble).  Never
+     instrument that block with code that uses HoistedMapPtr — it would run
+     before the load.  AllBlocks was collected earlier so the preamble is
+     already excluded. */
+  if (AFLMapPtr) { HoistedMapPtr = hoistMapPointerLoad(F, AFLMapPtr, PtrTy); }
 
   uint32_t special = 0, local_selects = 0;
 
@@ -1327,7 +1331,7 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
 
         }
 
-        updateCoverageForSelect(IRB, result, FuncMapPtr, vector_cnt);
+        updateCoverageForSelect(IRB, result, HoistedMapPtr, vector_cnt);
         instr += vector_cnt;
 
       }
@@ -1430,7 +1434,7 @@ void ModuleSanitizerCoverageAFL::InjectCoverageAtBlock(Function   &F,
 
     }
 
-    updateCoverageBitmap(IRB, CoverageIndex, FuncMapPtr);
+    updateCoverageBitmap(IRB, CoverageIndex, HoistedMapPtr);
 
     // done :)
 

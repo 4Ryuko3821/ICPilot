@@ -100,7 +100,10 @@ inline void setNoSanitizeMetadata(llvm::Instruction *I) {
 /* Load __afl_area_ptr once at function entry and return the loaded value.
    Creates a preamble basic block so later per-block instrumentation never
    sees or displaces this load.  The load is marked invariant because
-   __afl_area_ptr is set once at process start and never changes. */
+   __afl_area_ptr is set once at process start and never changes.
+
+   Callers should collect BlocksToInstrument before calling this so the
+   preamble is excluded from instrumentation. */
 inline llvm::Value *hoistMapPointerLoad(llvm::Function       &F,
                                         llvm::GlobalVariable *AFLMapPtr,
                                         llvm::Type           *PtrTy) {
@@ -108,12 +111,28 @@ inline llvm::Value *hoistMapPointerLoad(llvm::Function       &F,
   using namespace llvm;
   LLVMContext &Ctx = F.getContext();
   BasicBlock  *OldEntry = &F.getEntryBlock();
-  BasicBlock  *Preamble = BasicBlock::Create(Ctx, "afl.entry", &F, OldEntry);
+
+  /* Collect static allocas before the preamble demotes them (#2722). */
+  SmallVector<AllocaInst *, 16> StaticAllocas;
+  for (auto &I : *OldEntry) {
+
+    if (auto *AI = dyn_cast<AllocaInst>(&I))
+      if (AI->isStaticAlloca()) StaticAllocas.push_back(AI);
+
+  }
+
+  BasicBlock *Preamble = BasicBlock::Create(Ctx, "afl.entry", &F, OldEntry);
+
   IRBuilder<>  IRB(Preamble);
   auto        *Load = IRB.CreateLoad(PtrTy, AFLMapPtr);
   setNoSanitizeMetadata(Load);
   Load->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(Ctx, {}));
   IRB.CreateBr(OldEntry);
+
+  /* Move static allocas into the preamble so ASan keeps them function-wide. */
+  for (auto *AI : StaticAllocas)
+    AI->moveBefore(Load);
+
   return Load;
 
 }

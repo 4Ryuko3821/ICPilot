@@ -241,6 +241,7 @@ bool CompareTransform::transformCmps(Module &M, const bool processStrcmp,
 
           Function *Callee = callInst->getCalledFunction();
           if (!Callee) continue;
+          if (Callee->isIntrinsic()) continue;
           if (callInst->getCallingConv() != llvm::CallingConv::C) continue;
           StringRef FuncName = Callee->getName();
           isStrcmp &=
@@ -481,6 +482,8 @@ bool CompareTransform::transformCmps(Module &M, const bool processStrcmp,
     bool        success_is_one = false;
     bool        nullCheck = false;
     Function   *Callee = callInst->getCalledFunction();
+
+    if (Callee->isIntrinsic()) continue;
 
     /*
     fprintf(stderr, "%s - %s - %s\n",

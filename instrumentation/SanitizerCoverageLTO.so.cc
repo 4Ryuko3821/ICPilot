@@ -698,6 +698,7 @@ bool ModuleSanitizerCoverageLTO::instrumentModule(
 
             Function *Callee = callInst->getCalledFunction();
             if (!Callee) continue;
+            if (Callee->isIntrinsic()) continue;
             if (callInst->getCallingConv() != llvm::CallingConv::C) continue;
             std::string FuncName = Callee->getName().str();
 
@@ -1576,6 +1577,7 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
 
             Function *Callee = callInst->getCalledFunction();
             if (!Callee) continue;
+            if (Callee->isIntrinsic()) continue;
             if (callInst->getCallingConv() != llvm::CallingConv::C) continue;
             StringRef FuncName = Callee->getName();
 
@@ -1743,6 +1745,7 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
             if (auto callInst = dyn_cast<CallInst>(&IN)) {
 
               Function *Callee = callInst->getCalledFunction();
+              if (Callee->isIntrinsic()) continue;
               if (countCallers(Callee) == 1) {
 
                 if (debug)
@@ -1858,7 +1861,9 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
 
   /* Set up HoistedMapPtr before the select/switch instrumentation loop,
      because updateBitmapForResult uses it.  InjectCoverage (called later)
-     will reuse the same value. */
+     will reuse the same value.
+     hoistMapPointerLoad inserts a new entry block (preamble) — never
+     instrument that block with code that uses HoistedMapPtr. */
   if (map_addr) {
 
     HoistedMapPtr = MapPtrFixed;
@@ -1879,6 +1884,7 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
 
         Function *Callee = callInst->getCalledFunction();
         if (!Callee) continue;
+        if (Callee->isIntrinsic()) continue;
         if (callInst->getCallingConv() != llvm::CallingConv::C) continue;
         StringRef FuncName = Callee->getName();
         if (!FuncName.compare(StringRef("dlopen")) ||

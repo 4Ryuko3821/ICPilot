@@ -751,8 +751,8 @@ static u32 to_base64(u8 *src, u8 *dst, u32 dst_len) {
   for (i = 0, j = 0; j < len; i += 3, j += 4) {
 
     v = src[i];
-    v = i + 1 < len ? v << 8 | src[i + 1] : v << 8;
-    v = i + 2 < len ? v << 8 | src[i + 2] : v << 8;
+    v = i + 1 < dst_len ? v << 8 | src[i + 1] : v << 8;
+    v = i + 2 < dst_len ? v << 8 | src[i + 2] : v << 8;
 
     dst[j] = base64_encode_table[(v >> 18) & 0x3F];
     dst[j + 1] = base64_encode_table[(v >> 12) & 0x3F];

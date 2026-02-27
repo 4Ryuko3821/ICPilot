@@ -141,7 +141,7 @@ ifdef STATIC
   PYTHON_INCLUDE = /
 
   override CFLAGS_OPT += -static
-  override LDFLAGS += -lm -lpthread -lz -lutil
+  override LDFLAGS += -lm -lpthread -lutil
 endif
 
 ifdef PROFILING

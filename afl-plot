@@ -82,7 +82,7 @@ for arg in "$@"; do
 
     fi
 
-    LINES=`cat "$absdir/plot_data" | wc -l`
+    LINES=`wc -l < "$absdir/plot_data"`
 
     if [ "$LINES" -lt 3 ]; then
 

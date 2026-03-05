@@ -5,7 +5,7 @@
 #
 # Originally written by Michal Zalewski
 # Based on a design & prototype by Michael Rash.
-# Support extended to multiple input directorys by Jay Shah
+# Support extended to multiple input directories by Jay Shah
 # Copyright 2014, 2015 Google Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

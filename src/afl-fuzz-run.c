@@ -38,6 +38,9 @@
 #include "cmplog.h"
 #include "asanfuzz.h"
 
+static u8 *input_data;
+static u32 input_len;
+
 #ifdef PROFILING
 u64 time_spent_working = 0;
 #endif
@@ -107,11 +110,6 @@ fsrv_run_result_t __attribute__((hot)) fuzz_run_target(afl_state_t      *afl,
   if (unlikely(fsrv->use_ijon && afl->ijon_state && afl->ijon_bits)) {
 
     /* UNIFIED SHARED MEMORY ACCESS: Always use dynamic allocation */
-
-    // Get current input data for IJON processing
-    struct queue_entry *q = afl->queue_cur;
-    u8                 *input_data = queue_testcase_get(afl, q);
-    u32                 input_len = q->len;
 
     if (likely(input_data && input_len)) {
 
@@ -272,6 +270,13 @@ u32 __attribute__((hot)) write_to_testcase(afl_state_t *afl, void **mem,
 
   }
 
+  if (unlikely(afl->ijon_bits)) {
+
+    input_data = *mem;
+    input_len = len;
+
+  }
+
 #ifdef _AFL_DOCUMENT_MUTATIONS
   s32  doc_fd;
   char fn[PATH_MAX];
@@ -384,7 +389,6 @@ static void write_with_gap(afl_state_t *afl, u8 *mem, u32 len, u32 skip_at,
     } else {
 
       memcpy(afl->fsrv.shmem_fuzz, mem, skip_at);
-
       memcpy(afl->fsrv.shmem_fuzz + skip_at, mem + skip_at + skip_len,
              tail_len);
 
@@ -447,7 +451,6 @@ static void write_with_gap(afl_state_t *afl, u8 *mem, u32 len, u32 skip_at,
   } else {
 
     ck_write(fd, mem, skip_at, afl->fsrv.out_file);
-
     ck_write(fd, mem + skip_at + skip_len, tail_len, afl->fsrv.out_file);
 
   }

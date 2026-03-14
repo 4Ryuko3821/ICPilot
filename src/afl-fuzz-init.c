@@ -9,7 +9,7 @@
                         Andrea Fioraldi <andreafioraldi@gmail.com>
 
    Copyright 2016, 2017 Google Inc. All rights reserved.
-   Copyright 2019-2024 AFLplusplus Project. All rights reserved.
+   Copyright 2019-2026 AFLplusplus Project. All rights reserved.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -1123,8 +1123,8 @@ void perform_dry_run(afl_state_t *afl) {
 
                "    - Least likely, there is a horrible bug in the fuzzer. If "
                "other options\n"
-               "      fail, poke the Awesome Fuzzing Discord for "
-               "troubleshooting tips.\n",
+               "      fail, poke the Fuzzing Zulip server for troubleshooting "
+               "tips.\n",
                msg_exit_code,
                stringify_mem_size(val_buf, sizeof(val_buf),
                                   afl->fsrv.mem_limit << 20),
@@ -1154,8 +1154,8 @@ void perform_dry_run(afl_state_t *afl) {
 
                "    - Least likely, there is a horrible bug in the fuzzer. If "
                "other options\n"
-               "      fail, poke the Awesome Fuzzing Discord for "
-               "troubleshooting tips.\n",
+               "      fail, poke the Fuzzing Zulip server for troubleshooting "
+               "tips.\n",
                msg_exit_code);
 
         }

@@ -9,7 +9,7 @@
                         Andrea Fioraldi <andreafioraldi@gmail.com>
 
    Copyright 2016, 2017 Google Inc. All rights reserved.
-   Copyright 2019-2024 AFLplusplus Project. All rights reserved.
+   Copyright 2019-2026 AFLplusplus Project. All rights reserved.
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at:
@@ -785,6 +785,19 @@ void destroy_queue(afl_state_t *afl) {
       if (q->skipdet_e->skip_eff_map) ck_free(q->skipdet_e->skip_eff_map);
 
       ck_free(q->skipdet_e);
+
+    }
+
+    if (q->fs_meta) {
+
+      if (q->fs_meta->relations) { free(q->fs_meta->relations); }
+      if (q->fs_meta->blocked_points_map) {
+
+        free(q->fs_meta->blocked_points_map);
+
+      }
+
+      free(q->fs_meta);
 
     }
 

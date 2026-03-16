@@ -980,6 +980,12 @@ int main(int argc, char **argv_orig, char **envp) {
 
         }
 
+        if (strlen(optarg) > 64) {
+
+          FATAL("maximal -S/-M name is 64 characters");
+
+        }
+
         afl->sync_id = ck_strdup(optarg);
         afl->old_seed_selection = 1;  // force old queue walking seed selection
         afl->disable_trim = 1;        // disable trimming
@@ -1029,6 +1035,12 @@ int main(int argc, char **argv_orig, char **envp) {
           FATAL(
               "argument for -M started with a dash '-', which is used for "
               "options");
+
+        }
+
+        if (strlen(optarg) > 64) {
+
+          FATAL("maximal -S/-M name is 64 characters");
 
         }
 

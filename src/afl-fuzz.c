@@ -306,10 +306,9 @@ static void usage(u8 *argv0, int more_help) {
       "  -z            - skip the enhanced deterministic fuzzing\n"
       "                  (note that the old -d and -D flags are ignored.)\n"
       "  -T text       - text banner to show on the screen\n"
-      "  -I command    - execute this command/script when a new crash is "
-      "found\n"
-      "                  (crash file path is passed as the first argument to\n"
-      "                  the command/script)\n"
+      "  -I command    - execute this command when a new crash is found, the "
+      "crash\n"
+      "                  file path is passed as argument\n"
       //"  -B bitmap.txt - mutate a specific test case, use the
       // out/default/fuzz_bitmap file\n"
       "  -C            - crash exploration mode (the peruvian rabbit thing)\n"

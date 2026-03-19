@@ -586,13 +586,17 @@ __attribute__((constructor)) void __dislocator_init(void) {
   align_allocations = !!getenv("AFL_ALIGNED_ALLOC");
 
 #ifdef __APPLE__
-  rebind_symbols((struct rebinding[]){
-                     {"malloc", malloc, (void **)&__libc_malloc},
-                     {"calloc", calloc, (void **)&__libc_calloc},
-                     {"realloc", realloc, (void **)&__libc_realloc},
-                     {"free", free, (void **)&__libc_free},
-                 },
-                 4);
+  rebind_symbols(
+      (struct rebinding[]){
+
+          {"malloc", malloc, (void **)&__libc_malloc},
+          {"calloc", calloc, (void **)&__libc_calloc},
+          {"realloc", realloc, (void **)&__libc_realloc},
+          {"free", free, (void **)&__libc_free},
+
+      },
+
+      4);
 #endif
 
 }

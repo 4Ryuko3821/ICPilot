@@ -65,10 +65,12 @@ uint8_t *__libqasan_patch_jump(uint8_t *addr, uint8_t *dest) {
 // so let's use it in our stub
 
 uint8_t *__libqasan_patch_jump(uint8_t *addr, uint8_t *dest) {
+
   int is_thumb = (uintptr_t)addr & 1;
   addr = (uint8_t *)((uintptr_t)addr & ~1);
 
   if (is_thumb) {
+
     // Thumb2 code (10 bytes total)
     //
     // Layout:
@@ -89,12 +91,14 @@ uint8_t *__libqasan_patch_jump(uint8_t *addr, uint8_t *dest) {
     addr[5] = 0x47;
 
     // OFF: .word dest
-    // dest address (with Thumb bit preserved for bx), written to 4 align address.
+    // dest address (with Thumb bit preserved for bx), written to 4 align
+    // address.
     *(uint32_t *)&addr[8] = (uint32_t)dest;
 
     return &addr[12];
 
   } else {
+
     // ARM code (12 bytes total)
     //
     // Layout:
@@ -120,7 +124,9 @@ uint8_t *__libqasan_patch_jump(uint8_t *addr, uint8_t *dest) {
     *(uint32_t *)&addr[8] = (uint32_t)dest;
 
     return &addr[12];
+
   }
+
 }
 
 #elif __aarch64__

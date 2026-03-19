@@ -5,7 +5,10 @@
 
 
 ### Version ++4.41a (dev)
-  - ...
+  - afl-fuzz:
+    - `-I tool` call now receives the new crash as a command line parameter
+  - lib* tools:
+    - MacOS support is back, thanks to @Jay-1409 !
 
 
 ### Version ++4.40c (release)

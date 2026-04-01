@@ -1039,9 +1039,9 @@ int main(int argc, char **argv_orig, char **envp) {
 
         }
 
-        if (strlen(optarg) > 64) {
+        if (strlen(optarg) > SYNC_ID_MAX_LEN) {
 
-          FATAL("maximal -S/-M name is 64 characters");
+          FATAL("maximal -S/-M name is %u characters", (unsigned)SYNC_ID_MAX_LEN);
 
         }
 

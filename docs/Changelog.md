@@ -7,6 +7,9 @@
 ### Version ++4.41a (dev)
   - afl-fuzz:
     - `-I tool` call now receives the new crash as a command line parameter
+  - afl-cc:
+    - Fixes in the PCGUARD and LTO instrumentation that could lead to sanitizer
+      triggers in target binaries
   - lib* tools:
     - MacOS support is back, thanks to @Jay-1409 !
 

@@ -63,7 +63,7 @@
 #include <dlfcn.h>
 
 #ifdef __APPLE__
-  /* fishhook is used ang its from https://github.com/facebook/fishhook */
+  /* fishhook is used and it is from https://github.com/facebook/fishhook */
   #include "../macos_fishhook/fishhook.h"
 #endif
 

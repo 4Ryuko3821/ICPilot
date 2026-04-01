@@ -491,7 +491,14 @@ Value *ModuleSanitizerCoverageAFL::instrumentVectorSelect(
 
   }
 
-  return IRB.CreateSelect(condition, x, y);
+  Value *frozen_cond = IRB.CreateFreeze(condition);
+  if (auto *I = dyn_cast<Instruction>(frozen_cond)) {
+
+    I->setMetadata("afl.skip", MDNode::get(I->getContext(), {}));
+
+  }
+
+  return IRB.CreateSelect(frozen_cond, x, y);
 
 }
 
@@ -1178,7 +1185,15 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
 
           if (debug) printDebugInfo(IN);
 
-          auto   res = icmp;
+          /* "freeze" prevents the optimizer from deducing that the icmp
+             operands are non-poison merely because this select loads from
+             the selected guard pointer (which would be UB if the condition
+             were poison).  Without freeze, the optimizer can incorrectly
+             eliminate null checks (e.g. the empty-range guard in
+             std::reverse) that protect against inbounds-GEP UB.
+             Who would have thought we need this ... */
+          Value *res = IRB.CreateFreeze(icmp);
+          setNoInstrumentMetadata(res);
           Value *GuardPtr1 =
               createGuardPointer(IRB, cnt_cov + special + local_selects++ +
                                           AllBlocks.size() - skip_blocks);
@@ -1195,7 +1210,8 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
 
           if (debug) printDebugInfo(IN);
 
-          auto   res = fcmp;
+          Value *res = IRB.CreateFreeze(fcmp);
+          setNoInstrumentMetadata(res);
           Value *GuardPtr1 =
               createGuardPointer(IRB, cnt_cov + special + local_selects++ +
                                           AllBlocks.size() - skip_blocks);
@@ -1212,8 +1228,10 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
 
           Value      *pair = cxchg;
           IRBuilder<> IRB(cxchg->getNextNode());
-          Value      *res = IRB.CreateExtractValue(pair, 1);
-          Value      *GuardPtr1 =
+          Value      *extracted = IRB.CreateExtractValue(pair, 1);
+          Value      *res = IRB.CreateFreeze(extracted);
+          setNoInstrumentMetadata(res);
+          Value *GuardPtr1 =
               createGuardPointer(IRB, cnt_cov + special + local_selects++ +
                                           AllBlocks.size() - skip_blocks);
           Value *GuardPtr2 =
@@ -1272,7 +1290,9 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
 
           }
 
-          Value *res = IRB.CreateICmp(Pred, NewVal, OldVal, "rmw.cov");
+          Value *cmp = IRB.CreateICmp(Pred, NewVal, OldVal, "rmw.cov");
+          Value *res = IRB.CreateFreeze(cmp);
+          setNoInstrumentMetadata(res);
           Value *GuardPtr1 =
               createGuardPointer(IRB, cnt_cov + special + local_selects++ +
                                           AllBlocks.size() - skip_blocks);
@@ -1290,13 +1310,15 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
 
           if (t->getTypeID() == llvm::Type::IntegerTyID) {
 
+            Value *frozen_cond = IRB.CreateFreeze(condition);
+            setNoInstrumentMetadata(frozen_cond);
             Value *GuardPtr1 =
                 createGuardPointer(IRB, cnt_cov + special + local_selects++ +
                                             AllBlocks.size() - skip_blocks);
             Value *GuardPtr2 =
                 createGuardPointer(IRB, cnt_cov + special + local_selects++ +
                                             AllBlocks.size() - skip_blocks);
-            result = IRB.CreateSelect(condition, GuardPtr1, GuardPtr2);
+            result = IRB.CreateSelect(frozen_cond, GuardPtr1, GuardPtr2);
             setNoInstrumentMetadata(result);
 
           } else

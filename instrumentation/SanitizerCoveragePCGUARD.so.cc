@@ -1126,8 +1126,44 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
   /* hoistMapPointerLoad inserts a new entry block (preamble).  Never
      instrument that block with code that uses HoistedMapPtr — it would run
      before the load.  AllBlocks was collected earlier so the preamble is
-     already excluded. */
-  if (AFLMapPtr) { HoistedMapPtr = hoistMapPointerLoad(F, AFLMapPtr, PtrTy); }
+     already excluded.
+     IMPORTANT: do NOT hoist for coroutines.  This pass runs before
+     CoroSplitPass.  A hoisted load that is used across suspend points gets
+     spilled into the coroutine frame; in the .destroy path the frame is
+     freed first and the spilled value is then read from freed memory →
+     heap-use-after-free.  For coroutines we emit a fresh per-block load
+     instead (see getEffectiveMapPtr below), which is never live across a
+     suspend point and therefore never spilled. */
+  if (AFLMapPtr) {
+
+    bool isCoro = false;
+    for (auto &BB : F) {
+
+      for (auto &I : BB) {
+
+        if (auto *II = dyn_cast<IntrinsicInst>(&I)) {
+
+          auto iid = II->getIntrinsicID();
+          if (iid == Intrinsic::coro_id || iid == Intrinsic::coro_id_retcon ||
+              iid == Intrinsic::coro_id_retcon_once ||
+              iid == Intrinsic::coro_id_async) {
+
+            isCoro = true;
+            break;
+
+          }
+
+        }
+
+      }
+
+      if (isCoro) break;
+
+    }
+
+    if (!isCoro) { HoistedMapPtr = hoistMapPointerLoad(F, AFLMapPtr, PtrTy); }
+
+  }
 
   uint32_t special = 0, local_selects = 0;
 
@@ -1353,7 +1389,16 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
 
         }
 
-        updateCoverageForSelect(IRB, result, HoistedMapPtr, vector_cnt);
+        Value *EffMapPtr = HoistedMapPtr;
+        if (!EffMapPtr) {
+
+          auto *L = IRB.CreateLoad(PtrTy, AFLMapPtr);
+          setNoSanitizeMetadata(L);
+          EffMapPtr = L;
+
+        }
+
+        updateCoverageForSelect(IRB, result, EffMapPtr, vector_cnt);
         instr += vector_cnt;
 
       }
@@ -1456,7 +1501,16 @@ void ModuleSanitizerCoverageAFL::InjectCoverageAtBlock(Function   &F,
 
     }
 
-    updateCoverageBitmap(IRB, CoverageIndex, HoistedMapPtr);
+    Value *EffMapPtr = HoistedMapPtr;
+    if (!EffMapPtr) {
+
+      auto *L = IRB.CreateLoad(PtrTy, AFLMapPtr);
+      setNoSanitizeMetadata(L);
+      EffMapPtr = L;
+
+    }
+
+    updateCoverageBitmap(IRB, CoverageIndex, EffMapPtr);
 
     // done :)
 

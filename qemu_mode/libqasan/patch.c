@@ -71,14 +71,15 @@ uint8_t *__libqasan_patch_jump(uint8_t *addr, uint8_t *dest) {
 
   if (is_thumb) {
 
-    // Thumb2 code (10 bytes total)
+    // Thumb2 code (12 bytes total)
     //
     // Layout:
-    //   addr+0: ldr.w r12, [pc, #4]  (4 bytes)  = addr+8
+    //   addr+0: ldr.w r12, [pc, #4]  (4 bytes)  loads from addr+8
     //   addr+4: bx r12               (2 bytes)
+    //   addr+6: nop                  (2 bytes)   alignment padding
     //   addr+8: .word dest           (4 bytes)
     //
-    // PC in Thumb = instruction_address + 4
+    // PC in Thumb = instruction_address + 4, rounded down to 4-byte boundary
 
     // ldr.w r12, [pc, #4]
     addr[0] = 0xdf;
@@ -90,9 +91,11 @@ uint8_t *__libqasan_patch_jump(uint8_t *addr, uint8_t *dest) {
     addr[4] = 0x60;
     addr[5] = 0x47;
 
-    // OFF: .word dest
-    // dest address (with Thumb bit preserved for bx), written to 4 align
-    // address.
+    // nop (alignment padding)
+    addr[6] = 0x00;
+    addr[7] = 0xbf;
+
+    // OFF: .word dest (Thumb bit in dest preserved for bx)
     *(uint32_t *)&addr[8] = (uint32_t)dest;
 
     return &addr[12];

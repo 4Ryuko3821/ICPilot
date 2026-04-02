@@ -491,7 +491,14 @@ Value *ModuleSanitizerCoverageAFL::instrumentVectorSelect(
 
   }
 
-  return IRB.CreateSelect(condition, x, y);
+  Value *frozen_cond = IRB.CreateFreeze(condition);
+  if (auto *I = dyn_cast<Instruction>(frozen_cond)) {
+
+    I->setMetadata("afl.skip", MDNode::get(I->getContext(), {}));
+
+  }
+
+  return IRB.CreateSelect(frozen_cond, x, y);
 
 }
 
@@ -1119,8 +1126,44 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
   /* hoistMapPointerLoad inserts a new entry block (preamble).  Never
      instrument that block with code that uses HoistedMapPtr — it would run
      before the load.  AllBlocks was collected earlier so the preamble is
-     already excluded. */
-  if (AFLMapPtr) { HoistedMapPtr = hoistMapPointerLoad(F, AFLMapPtr, PtrTy); }
+     already excluded.
+     IMPORTANT: do NOT hoist for coroutines.  This pass runs before
+     CoroSplitPass.  A hoisted load that is used across suspend points gets
+     spilled into the coroutine frame; in the .destroy path the frame is
+     freed first and the spilled value is then read from freed memory →
+     heap-use-after-free.  For coroutines we emit a fresh per-block load
+     instead (see getEffectiveMapPtr below), which is never live across a
+     suspend point and therefore never spilled. */
+  if (AFLMapPtr) {
+
+    bool isCoro = false;
+    for (auto &BB : F) {
+
+      for (auto &I : BB) {
+
+        if (auto *II = dyn_cast<IntrinsicInst>(&I)) {
+
+          auto iid = II->getIntrinsicID();
+          if (iid == Intrinsic::coro_id || iid == Intrinsic::coro_id_retcon ||
+              iid == Intrinsic::coro_id_retcon_once ||
+              iid == Intrinsic::coro_id_async) {
+
+            isCoro = true;
+            break;
+
+          }
+
+        }
+
+      }
+
+      if (isCoro) break;
+
+    }
+
+    if (!isCoro) { HoistedMapPtr = hoistMapPointerLoad(F, AFLMapPtr, PtrTy); }
+
+  }
 
   uint32_t special = 0, local_selects = 0;
 
@@ -1178,7 +1221,15 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
 
           if (debug) printDebugInfo(IN);
 
-          auto   res = icmp;
+          /* "freeze" prevents the optimizer from deducing that the icmp
+             operands are non-poison merely because this select loads from
+             the selected guard pointer (which would be UB if the condition
+             were poison).  Without freeze, the optimizer can incorrectly
+             eliminate null checks (e.g. the empty-range guard in
+             std::reverse) that protect against inbounds-GEP UB.
+             Who would have thought we need this ... */
+          Value *res = IRB.CreateFreeze(icmp);
+          setNoInstrumentMetadata(res);
           Value *GuardPtr1 =
               createGuardPointer(IRB, cnt_cov + special + local_selects++ +
                                           AllBlocks.size() - skip_blocks);
@@ -1195,7 +1246,8 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
 
           if (debug) printDebugInfo(IN);
 
-          auto   res = fcmp;
+          Value *res = IRB.CreateFreeze(fcmp);
+          setNoInstrumentMetadata(res);
           Value *GuardPtr1 =
               createGuardPointer(IRB, cnt_cov + special + local_selects++ +
                                           AllBlocks.size() - skip_blocks);
@@ -1212,8 +1264,10 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
 
           Value      *pair = cxchg;
           IRBuilder<> IRB(cxchg->getNextNode());
-          Value      *res = IRB.CreateExtractValue(pair, 1);
-          Value      *GuardPtr1 =
+          Value      *extracted = IRB.CreateExtractValue(pair, 1);
+          Value      *res = IRB.CreateFreeze(extracted);
+          setNoInstrumentMetadata(res);
+          Value *GuardPtr1 =
               createGuardPointer(IRB, cnt_cov + special + local_selects++ +
                                           AllBlocks.size() - skip_blocks);
           Value *GuardPtr2 =
@@ -1272,7 +1326,9 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
 
           }
 
-          Value *res = IRB.CreateICmp(Pred, NewVal, OldVal, "rmw.cov");
+          Value *cmp = IRB.CreateICmp(Pred, NewVal, OldVal, "rmw.cov");
+          Value *res = IRB.CreateFreeze(cmp);
+          setNoInstrumentMetadata(res);
           Value *GuardPtr1 =
               createGuardPointer(IRB, cnt_cov + special + local_selects++ +
                                           AllBlocks.size() - skip_blocks);
@@ -1290,13 +1346,15 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
 
           if (t->getTypeID() == llvm::Type::IntegerTyID) {
 
+            Value *frozen_cond = IRB.CreateFreeze(condition);
+            setNoInstrumentMetadata(frozen_cond);
             Value *GuardPtr1 =
                 createGuardPointer(IRB, cnt_cov + special + local_selects++ +
                                             AllBlocks.size() - skip_blocks);
             Value *GuardPtr2 =
                 createGuardPointer(IRB, cnt_cov + special + local_selects++ +
                                             AllBlocks.size() - skip_blocks);
-            result = IRB.CreateSelect(condition, GuardPtr1, GuardPtr2);
+            result = IRB.CreateSelect(frozen_cond, GuardPtr1, GuardPtr2);
             setNoInstrumentMetadata(result);
 
           } else
@@ -1331,7 +1389,16 @@ bool ModuleSanitizerCoverageAFL::InjectCoverage(
 
         }
 
-        updateCoverageForSelect(IRB, result, HoistedMapPtr, vector_cnt);
+        Value *EffMapPtr = HoistedMapPtr;
+        if (!EffMapPtr) {
+
+          auto *L = IRB.CreateLoad(PtrTy, AFLMapPtr);
+          setNoSanitizeMetadata(L);
+          EffMapPtr = L;
+
+        }
+
+        updateCoverageForSelect(IRB, result, EffMapPtr, vector_cnt);
         instr += vector_cnt;
 
       }
@@ -1434,7 +1501,16 @@ void ModuleSanitizerCoverageAFL::InjectCoverageAtBlock(Function   &F,
 
     }
 
-    updateCoverageBitmap(IRB, CoverageIndex, HoistedMapPtr);
+    Value *EffMapPtr = HoistedMapPtr;
+    if (!EffMapPtr) {
+
+      auto *L = IRB.CreateLoad(PtrTy, AFLMapPtr);
+      setNoSanitizeMetadata(L);
+      EffMapPtr = L;
+
+    }
+
+    updateCoverageBitmap(IRB, CoverageIndex, EffMapPtr);
 
     // done :)
 

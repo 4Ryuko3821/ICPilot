@@ -1940,11 +1940,13 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
 
         if (t->getTypeID() == llvm::Type::IntegerTyID) {
 
+          Value *frozen_cond = IRB.CreateFreeze(condition);
+          markAflSkip(frozen_cond);
           Value *val1 =
               applyCtxOffset(IRB, ConstantInt::get(Int32Ty, ++afl_global_id));
           Value *val2 =
               applyCtxOffset(IRB, ConstantInt::get(Int32Ty, ++afl_global_id));
-          result = IRB.CreateSelect(condition, val1, val2);
+          result = IRB.CreateSelect(frozen_cond, val1, val2);
           inst += 2;
 
         } else
@@ -1986,7 +1988,9 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
 
               }
 
-              result = IRB.CreateSelect(condition, x, y);
+              Value *frozen_cond = IRB.CreateFreeze(condition);
+              markAflSkip(frozen_cond);
+              result = IRB.CreateSelect(frozen_cond, x, y);
 
             }
 
@@ -2017,11 +2021,13 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
 
           if (!icmp->getType()->isIntegerTy(1)) continue;
 
+          Value *res = IRB.CreateFreeze(icmp);
+          markAflSkip(res);
           Value *val1 =
               applyCtxOffset(IRB, ConstantInt::get(Int32Ty, ++afl_global_id));
           Value *val2 =
               applyCtxOffset(IRB, ConstantInt::get(Int32Ty, ++afl_global_id));
-          result = IRB.CreateSelect(icmp, val1, val2);
+          result = IRB.CreateSelect(res, val1, val2);
           markAflSkip(result);
           inst += 2;
 
@@ -2029,17 +2035,21 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
 
           if (!fcmp->getType()->isIntegerTy(1)) continue;
 
+          Value *res = IRB.CreateFreeze(fcmp);
+          markAflSkip(res);
           Value *val1 =
               applyCtxOffset(IRB, ConstantInt::get(Int32Ty, ++afl_global_id));
           Value *val2 =
               applyCtxOffset(IRB, ConstantInt::get(Int32Ty, ++afl_global_id));
-          result = IRB.CreateSelect(fcmp, val1, val2);
+          result = IRB.CreateSelect(res, val1, val2);
           markAflSkip(result);
           inst += 2;
 
         } else if (auto *cxchg = dyn_cast<AtomicCmpXchgInst>(&IN)) {
 
-          Value *res = IRB.CreateExtractValue(cxchg, 1);
+          Value *extracted = IRB.CreateExtractValue(cxchg, 1);
+          markAflSkip(extracted);
+          Value *res = IRB.CreateFreeze(extracted);
           markAflSkip(res);
           Value *val1 =
               applyCtxOffset(IRB, ConstantInt::get(Int32Ty, ++afl_global_id));
@@ -2096,7 +2106,9 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
 
           }
 
-          Value *res = IRB.CreateICmp(Pred, NewVal, OldVal, "rmw.cov");
+          Value *cmp = IRB.CreateICmp(Pred, NewVal, OldVal, "rmw.cov");
+          markAflSkip(cmp);
+          Value *res = IRB.CreateFreeze(cmp);
           markAflSkip(res);
           Value *val1 =
               applyCtxOffset(IRB, ConstantInt::get(Int32Ty, ++afl_global_id));

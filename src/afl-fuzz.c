@@ -306,8 +306,9 @@ static void usage(u8 *argv0, int more_help) {
       "  -z            - skip the enhanced deterministic fuzzing\n"
       "                  (note that the old -d and -D flags are ignored.)\n"
       "  -T text       - text banner to show on the screen\n"
-      "  -I command    - execute this command/script when a new crash is "
-      "found\n"
+      "  -I command    - execute this command when a new crash is found, the "
+      "crash\n"
+      "                  file path is passed as argument\n"
       //"  -B bitmap.txt - mutate a specific test case, use the
       // out/default/fuzz_bitmap file\n"
       "  -C            - crash exploration mode (the peruvian rabbit thing)\n"
@@ -980,6 +981,12 @@ int main(int argc, char **argv_orig, char **envp) {
 
         }
 
+        if (strlen(optarg) > SYNC_ID_MAX_LEN) {
+
+          FATAL("maximum -S/-M name length exceeded");
+
+        }
+
         afl->sync_id = ck_strdup(optarg);
         afl->old_seed_selection = 1;  // force old queue walking seed selection
         afl->disable_trim = 1;        // disable trimming
@@ -1029,6 +1036,12 @@ int main(int argc, char **argv_orig, char **envp) {
           FATAL(
               "argument for -M started with a dash '-', which is used for "
               "options");
+
+        }
+
+        if (strlen(optarg) > SYNC_ID_MAX_LEN) {
+
+          FATAL("maximal -S/-M name is %u characters", (unsigned)SYNC_ID_MAX_LEN);
 
         }
 

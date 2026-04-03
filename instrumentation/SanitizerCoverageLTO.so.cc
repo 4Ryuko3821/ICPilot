@@ -394,6 +394,8 @@ bool ModuleSanitizerCoverageLTO::instrumentModule(
       return false;
   */
   BlockList.clear();
+  for (auto &kv : valueMap)
+    delete kv.second;
   valueMap.clear();
   dictionary.clear();
   GlobalsToAppendToUsed.clear();
@@ -506,9 +508,14 @@ bool ModuleSanitizerCoverageLTO::instrumentModule(
   skip_nozero = getenv("AFL_LLVM_SKIP_NEVERZERO");
   use_threadsafe_counters = getenv("AFL_LLVM_THREADSAFE_INST");
 
-  if ((ptr = getenv("AFL_LLVM_LTO_STARTID")) != NULL)
-    if ((afl_global_id = atoi(ptr)) < 0)
+  if ((ptr = getenv("AFL_LLVM_LTO_STARTID")) != NULL) {
+
+    int val = atoi(ptr);
+    if (val < 0)
       FATAL("AFL_LLVM_LTO_STARTID value of \"%s\" is negative\n", ptr);
+    afl_global_id = (uint32_t)val;
+
+  }
 
   if (afl_global_id < 4) { afl_global_id = 4; }
 
@@ -557,9 +564,6 @@ bool ModuleSanitizerCoverageLTO::instrumentModule(
 
     AFLMapPtr = new GlobalVariable(
         M, PtrTy, false, GlobalValue::ExternalLinkage, 0, "__afl_area_ptr");
-    AFLCovMapSize =
-        new GlobalVariable(M, Int32Tyi, false, GlobalValue::ExternalLinkage, 0,
-                           "__afl_cov_map_size");
 
   } else {
 
@@ -567,6 +571,10 @@ bool ModuleSanitizerCoverageLTO::instrumentModule(
     MapPtrFixed = ConstantExpr::getIntToPtr(MapAddr, PtrTy);
 
   }
+
+  AFLCovMapSize =
+      new GlobalVariable(M, Int32Tyi, false, GlobalValue::ExternalLinkage, 0,
+                         "__afl_cov_map_size");
 
   AFLContext = new GlobalVariable(
       M, Int32Ty, false, GlobalValue::ExternalLinkage, 0, "__afl_prev_ctx", 0,
@@ -624,8 +632,8 @@ bool ModuleSanitizerCoverageLTO::instrumentModule(
                   case CmpInst::ICMP_SGT:
 
                     // signed comparison and it is a negative constant
-                    if ((len == 4 && (val & 80000000)) ||
-                        (len == 8 && (val & 8000000000000000))) {
+                    if ((len == 4 && (val & 0x80000000)) ||
+                        (len == 8 && (val & 0x8000000000000000))) {
 
                       if ((val & 0xffff) != 1) val2 = val - 1;
                       break;
@@ -647,8 +655,8 @@ bool ModuleSanitizerCoverageLTO::instrumentModule(
                   case CmpInst::ICMP_SGE:
 
                     // signed comparison and it is a negative constant
-                    if ((len == 4 && (val & 80000000)) ||
-                        (len == 8 && (val & 8000000000000000))) {
+                    if ((len == 4 && (val & 0x80000000)) ||
+                        (len == 8 && (val & 0x8000000000000000))) {
 
                       if ((val & 0xffff) != 1) val2 = val - 1;
                       break;
@@ -1117,8 +1125,9 @@ bool ModuleSanitizerCoverageLTO::instrumentModule(
 
     if (map_addr) {
 
-      GlobalVariable *AFLMapAddrFixed = new GlobalVariable(
-          M, Int64Tyi, true, GlobalValue::ExternalLinkage, 0, "__afl_map_addr");
+      GlobalVariable *AFLMapAddrFixed =
+          new GlobalVariable(M, Int64Tyi, false, GlobalValue::ExternalLinkage,
+                             0, "__afl_map_addr");
       ConstantInt *MapAddr = ConstantInt::get(Int64Tyi, map_addr);
       StoreInst   *StoreMapAddr = IRB.CreateStore(MapAddr, AFLMapAddrFixed);
       setNoSanitizeMetadata(StoreMapAddr);
@@ -1132,8 +1141,8 @@ bool ModuleSanitizerCoverageLTO::instrumentModule(
       write_loc = (((afl_global_id + 8) >> 3) << 3);
 
       GlobalVariable *AFLFinalLoc =
-          new GlobalVariable(M, Int32Tyi, true, GlobalValue::ExternalLinkage, 0,
-                             "__afl_final_loc");
+          new GlobalVariable(M, Int32Tyi, false, GlobalValue::ExternalLinkage,
+                             0, "__afl_final_loc");
       ConstantInt *const_loc = ConstantInt::get(Int32Tyi, write_loc);
       StoreInst   *StoreFinalLoc = IRB.CreateStore(const_loc, AFLFinalLoc);
       setNoSanitizeMetadata(StoreFinalLoc);
@@ -1187,13 +1196,12 @@ bool ModuleSanitizerCoverageLTO::instrumentModule(
         setNoSanitizeMetadata(StoreDictLen);
 
         ArrayType *ArrayTy = ArrayType::get(IntegerType::get(Ctx, 8), offset);
+        ArrayRef<char>  DictData(ptrhld.get(), offset);
         GlobalVariable *AFLInternalDictionary = new GlobalVariable(
             M, ArrayTy, true, GlobalValue::ExternalLinkage,
-            ConstantDataArray::get(Ctx,
-                                   *(new ArrayRef<char>(ptrhld.get(), offset))),
-            "__afl_internal_dictionary");
-        AFLInternalDictionary->setInitializer(ConstantDataArray::get(
-            Ctx, *(new ArrayRef<char>(ptrhld.get(), offset))));
+            ConstantDataArray::get(Ctx, DictData), "__afl_internal_dictionary");
+        AFLInternalDictionary->setInitializer(
+            ConstantDataArray::get(Ctx, DictData));
         AFLInternalDictionary->setConstant(true);
 
         GlobalVariable *AFLDictionary =
@@ -1351,12 +1359,7 @@ u32 countCallers(Function *F) {
 
   for (auto *U : F->users()) {
 
-    if (auto *CI = dyn_cast<CallInst>(U)) {
-
-      ++callers;
-      (void)(CI);
-
-    }
+    if (isa<CallInst>(U) || isa<InvokeInst>(U)) { ++callers; }
 
   }
 
@@ -1373,11 +1376,11 @@ Function *returnOnlyCaller(Function *F) {
 
   for (auto *U : F->users()) {
 
-    if (auto *CI = dyn_cast<CallInst>(U)) {
+    if (auto *CB = dyn_cast<CallBase>(U)) {
 
       if (caller == NULL) {
 
-        caller = CI->getParent()->getParent();
+        caller = CB->getParent()->getParent();
 
       } else {
 
@@ -1614,6 +1617,13 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
 
             } else
 
+                if (t->getTypeID() == llvm::Type::ScalableVectorTyID) {
+
+              // Scalable vectors: OR-reduce to scalar at instrumentation time
+              inst += 2;
+
+            } else
+
 #endif
             {
 
@@ -1745,6 +1755,7 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
             if (auto callInst = dyn_cast<CallInst>(&IN)) {
 
               Function *Callee = callInst->getCalledFunction();
+              if (!Callee) continue;
               if (Callee->isIntrinsic()) continue;
               if (countCallers(Callee) == 1) {
 
@@ -1807,22 +1818,45 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
   auto updateBitmapForResult = [&](IRBuilder<> &IRB, Value *Result,
                                    uint32_t vector_cnt) {
 
+    Value *EffMapPtr = HoistedMapPtr;
+    if (!EffMapPtr) {
+
+      auto *L = IRB.CreateLoad(PtrTy, AFLMapPtr);
+      setNoSanitizeMetadata(L);
+      EffMapPtr = L;
+
+    }
+
     uint32_t vector_cur = 0;
 
     while (1) {
 
       Value *MapPtrIdx = nullptr;
+      Value *CoverageIndex = nullptr;
 
       if (!vector_cnt) {
 
-        MapPtrIdx = IRB.CreateGEP(Int8Ty, HoistedMapPtr, Result);
+        CoverageIndex = Result;
 
       } else {
 
-        auto element = IRB.CreateExtractElement(Result, vector_cur++);
-        MapPtrIdx = IRB.CreateGEP(Int8Ty, HoistedMapPtr, element);
+        CoverageIndex = IRB.CreateExtractElement(Result, vector_cur++);
 
       }
+
+      // Apply IJON state-aware coverage if enabled
+      if (ijon_enabled && AFLIJONState) {
+
+        LoadInst *IJONStateVal = IRB.CreateLoad(Int32Tyi, AFLIJONState);
+        setNoSanitizeMetadata(IJONStateVal);
+        Value    *XorResult = IRB.CreateXor(IJONStateVal, CoverageIndex);
+        LoadInst *CovMapSize = IRB.CreateLoad(Int32Tyi, AFLCovMapSize);
+        setNoSanitizeMetadata(CovMapSize);
+        CoverageIndex = IRB.CreateURem(XorResult, CovMapSize);
+
+      }
+
+      MapPtrIdx = IRB.CreateGEP(Int8Ty, EffMapPtr, CoverageIndex);
 
       if (use_threadsafe_counters) {
 
@@ -1863,14 +1897,52 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
      because updateBitmapForResult uses it.  InjectCoverage (called later)
      will reuse the same value.
      hoistMapPointerLoad inserts a new entry block (preamble) — never
-     instrument that block with code that uses HoistedMapPtr. */
+     instrument that block with code that uses HoistedMapPtr.
+     IMPORTANT: do NOT hoist for coroutines.  This pass runs before
+     CoroSplitPass.  A hoisted load that is used across suspend points gets
+     spilled into the coroutine frame; in the .destroy path the frame is
+     freed first and the spilled value is then read from freed memory →
+     heap-use-after-free. */
   if (map_addr) {
 
     HoistedMapPtr = MapPtrFixed;
 
   } else {
 
-    HoistedMapPtr = hoistMapPointerLoad(F, AFLMapPtr, PtrTy);
+    bool isCoro = false;
+    for (auto &BB : F) {
+
+      for (auto &I : BB) {
+
+        if (auto *II = dyn_cast<IntrinsicInst>(&I)) {
+
+          auto iid = II->getIntrinsicID();
+          if (iid == Intrinsic::coro_id || iid == Intrinsic::coro_id_retcon ||
+              iid == Intrinsic::coro_id_retcon_once ||
+              iid == Intrinsic::coro_id_async) {
+
+            isCoro = true;
+            break;
+
+          }
+
+        }
+
+      }
+
+      if (isCoro) break;
+
+    }
+
+    if (!isCoro) {
+
+      HoistedMapPtr = hoistMapPointerLoad(F, AFLMapPtr, PtrTy);
+
+    } else {
+
+      HoistedMapPtr = NULL;
+
+    }
 
   }
 
@@ -1995,6 +2067,23 @@ void ModuleSanitizerCoverageLTO::instrumentFunction(
             }
 
           }
+
+        } else
+
+            if (t->getTypeID() == llvm::Type::ScalableVectorTyID) {
+
+          // Scalable vectors (SVE/RISC-V V): OR-reduce to scalar i1
+          // since the vector length is runtime-dependent.
+          Value *frozen_cond = IRB.CreateFreeze(condition);
+          markAflSkip(frozen_cond);
+          Value *reduced = IRB.CreateOrReduce(frozen_cond);
+          markAflSkip(reduced);
+          Value *val1 =
+              applyCtxOffset(IRB, ConstantInt::get(Int32Ty, ++afl_global_id));
+          Value *val2 =
+              applyCtxOffset(IRB, ConstantInt::get(Int32Ty, ++afl_global_id));
+          result = IRB.CreateSelect(reduced, val1, val2);
+          inst += 2;
 
         } else
 
@@ -2349,7 +2438,16 @@ void ModuleSanitizerCoverageLTO::InjectCoverageAtBlock(Function   &F,
 
     /* GEP into the SHM map (pointer loaded once in preamble) */
 
-    Value *MapPtrIdx = IRB.CreateGEP(Int8Ty, HoistedMapPtr, val);
+    Value *EffMapPtr = HoistedMapPtr;
+    if (!EffMapPtr) {
+
+      auto *L = IRB.CreateLoad(PtrTy, AFLMapPtr);
+      setNoSanitizeMetadata(L);
+      EffMapPtr = L;
+
+    }
+
+    Value *MapPtrIdx = IRB.CreateGEP(Int8Ty, EffMapPtr, val);
 
     /* Update bitmap */
     if (use_threadsafe_counters) {                                /* Atomic */

@@ -118,36 +118,13 @@ bool isIgnoreFunction(const llvm::Function *F) {
 
   static constexpr const char *ignoreList[] = {
 
-      "asan.",
-      "llvm.",
-      "sancov.",
-      "__ubsan",
-      "ign.",
-      "__afl",
-      "_fini",
-      "__libc_",
-      "__asan",
-      "__msan",
-      "__cmplog",
-      "__sancov",
-      "__san",
-      "__lsan",
-      "__cxx_",
-      "__decide_deferred",
-      "_GLOBAL",
-      "_ZZN6__asan",
-      "_ZZN6__lsan",
-      "msan.",
-      "LLVMFuzzerM",
-      "LLVMFuzzerC",
-      "LLVMFuzzerI",
+      "asan.", "llvm.", "sancov.", "__ubsan", "ign.", "__afl", "_fini",
+      "__libc_", "__asan", "__msan", "__cmplog", "__sancov", "__san", "__lsan",
+      "__cxx_", "__decide_deferred", "_GLOBAL", "_ZZN6__asan", "_ZZN6__lsan",
+      "msan.", "LLVMFuzzerM", "LLVMFuzzerC", "LLVMFuzzerI",
       // LLVMFuzzerT(estOneInput is not in this list on purpose!
-      "maybe_duplicate_stderr",
-      "discard_output",
-      "close_stdout",
-      "dup_and_close_stderr",
-      "maybe_close_fd_mask",
-      "ExecuteFilesOnyByOne"
+      "maybe_duplicate_stderr", "discard_output", "close_stdout",
+      "dup_and_close_stderr", "maybe_close_fd_mask", "ExecuteFilesOnyByOne"
 
   };
 

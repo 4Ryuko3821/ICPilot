@@ -529,7 +529,7 @@ void ModuleSanitizerCoverageAFL::updateCoverageForSelect(IRBuilder<> &IRB,
 
       LoadInst *IJONStateVal = IRB.CreateLoad(Int32Ty, AFLIJONState);
       setNoSanitizeMetadata(IJONStateVal);
-      Value *XorResult = IRB.CreateXor(IJONStateVal, CoverageIndex);
+      Value    *XorResult = IRB.CreateXor(IJONStateVal, CoverageIndex);
       LoadInst *CovMapSize = IRB.CreateLoad(Int32Ty, AFLCovMapSize);
       setNoSanitizeMetadata(CovMapSize);
       CoverageIndex = IRB.CreateURem(XorResult, CovMapSize);

@@ -91,13 +91,13 @@ void create_alias_table(afl_state_t *afl) {
 
     alias_table = malloc(n * sizeof(u32));
     alias_probability = (double *)malloc(n * sizeof(double));
-    map_items = afl->active_items;
+    map_items = afl->queued_items;
 
   }
 
   double *P = (double *)malloc(n * sizeof(double));
-  u32    *Small = (int *)malloc(n * sizeof(u32));
-  u32    *Large = (int *)malloc(n * sizeof(u32));
+  u32    *Small = (u32 *)malloc(n * sizeof(u32));
+  u32    *Large = (u32 *)malloc(n * sizeof(u32));
 
   if (unlikely(!P || !Small || !Large || !alias_table || !alias_probability)) {
 
@@ -125,6 +125,13 @@ void create_alias_table(afl_state_t *afl) {
         ++active;
 
       }
+
+    }
+
+    if (unlikely(active == 0)) {
+
+      afl->stop_soon = 2;
+      return;
 
     }
 

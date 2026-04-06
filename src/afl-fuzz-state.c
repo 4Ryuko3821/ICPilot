@@ -600,15 +600,14 @@ void read_afl_environment(afl_state_t *afl, char **envp) {
 
                               afl_environment_variable_len)) {
 
-            afl->afl_env.afl_statsd_tags_flavor =
-                (u8 *)get_afl_env(afl_environment_variables[i]);
+            // handled elsewhere
 
           } else if (!strncmp(env, "AFL_NO_COLOUR",
 
                               afl_environment_variable_len)) {
 
-            afl->afl_env.afl_statsd_tags_flavor =
-                (u8 *)get_afl_env(afl_environment_variables[i]);
+            // handled elsewhere
+
 #endif
 
           } else if (!strncmp(env, "AFL_KILL_SIGNAL",
@@ -943,8 +942,11 @@ void afl_state_deinit(afl_state_t *afl) {
   afl_free(afl->in_buf);
   afl_free(afl->in_scratch_buf);
   afl_free(afl->ex_buf);
-  afl_free(afl->alias_table);
-  afl_free(afl->alias_probability);
+  free(afl->alias_table);
+  free(afl->alias_probability);
+  free(afl->splice_buf_ids);
+  if (afl->testcase_buf) { afl_free(afl->testcase_buf); }
+  if (afl->splicecase_buf) { afl_free(afl->splicecase_buf); }
 
   if (afl->fsrv.use_ijon) { afl_free(afl->ijon_input_data); }
 

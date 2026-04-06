@@ -27,6 +27,9 @@
 #include <ctype.h>
 #include <math.h>
 
+static double *alias_probability;
+static u32    *alias_table, active_items;
+
 #ifdef _STANDALONE_MODULE
 void minimize_bits(afl_state_t *afl, u8 *dst, u8 *src) {
 
@@ -52,11 +55,11 @@ inline u32 select_next_queue_entry(afl_state_t *afl) {
 
   /*
   fprintf(stderr, "select: p=%f s=%u ... p < prob[s]=%f ? s=%u : alias[%u]=%u"
-  " ==> %u\n", p, s, afl->alias_probability[s], s, s, afl->alias_table[s], p <
-  afl->alias_probability[s] ? s : afl->alias_table[s]);
+  " ==> %u\n", p, s, alias_probability[s], s, s, alias_table[s], p <
+  alias_probability[s] ? s : alias_table[s]);
   */
 
-  return (p < afl->alias_probability[s] ? s : afl->alias_table[s]);
+  return (p < alias_probability[s] ? s : alias_table[s]);
 
 }
 
@@ -64,28 +67,43 @@ inline u32 select_next_queue_entry(afl_state_t *afl) {
 
 void create_alias_table(afl_state_t *afl) {
 
-  u32    n = afl->queued_items, i = 0, nSmall = 0, nLarge = n - 1;
+  u32    n = afl->active_items, i = 0, nSmall = 0, nLarge = n - 1;
   double sum = 0;
 
-  double *P = (double *)afl_realloc(AFL_BUF_PARAM(out), n * sizeof(double));
-  u32 *Small = (int *)afl_realloc(AFL_BUF_PARAM(out_scratch), n * sizeof(u32));
-  u32 *Large = (int *)afl_realloc(AFL_BUF_PARAM(in_scratch), n * sizeof(u32));
+  if (likely(alias_table)) {
 
-  afl->alias_table =
-      (u32 *)afl_realloc((void **)&afl->alias_table, n * sizeof(u32));
-  afl->alias_probability = (double *)afl_realloc(
-      (void **)&afl->alias_probability, n * sizeof(double));
+    if (likely(n > active_items)) {
 
-  if (!P || !Small || !Large || !afl->alias_table || !afl->alias_probability) {
+      free(alias_table);
+      alias_table = malloc(n * sizeof(u32));
+      free(alias_probability);
+      alias_probability = (double *)malloc(n * sizeof(double));
+      active_items = afl->active_items;
+
+    } else {
+
+      memset((void *)alias_table, 0, n * sizeof(u32));
+      memset((void *)alias_probability, 0, n * sizeof(double));
+
+    }
+
+  } else {
+
+    alias_table = malloc(n * sizeof(u32));
+    alias_probability = (double *)malloc(n * sizeof(double));
+    active_items = afl->active_items;
+
+  }
+
+  double *P = (double *)malloc(n * sizeof(double));
+  u32    *Small = (int *)malloc(n * sizeof(u32));
+  u32    *Large = (int *)malloc(n * sizeof(u32));
+
+  if (unlikely(!P || !Small || !Large || !alias_table || !alias_probability)) {
 
     FATAL("could not acquire memory for alias table");
 
   }
-
-  memset((void *)afl->alias_probability, 0, n * sizeof(double));
-  memset((void *)afl->alias_table, 0, n * sizeof(u32));
-  memset((void *)Small, 0, n * sizeof(u32));
-  memset((void *)Large, 0, n * sizeof(u32));
 
   if (likely(afl->schedule < RARE)) {
 
@@ -350,8 +368,8 @@ void create_alias_table(afl_state_t *afl) {
     u32 small = Small[--nSmall];
     u32 large = Large[++nLarge];
 
-    afl->alias_probability[small] = P[small];
-    afl->alias_table[small] = large;
+    alias_probability[small] = P[small];
+    alias_table[small] = large;
 
     P[large] = P[large] - (1 - P[small]);
 
@@ -369,16 +387,19 @@ void create_alias_table(afl_state_t *afl) {
 
   while (nSmall) {
 
-    afl->alias_probability[Small[--nSmall]] = 1;
+    alias_probability[Small[--nSmall]] = 1;
 
   }
 
   while (nLarge != n - 1) {
 
-    afl->alias_probability[Large[++nLarge]] = 1;
+    alias_probability[Large[++nLarge]] = 1;
 
   }
 
+  free(P);
+  free(Small);
+  free(Large);
   afl->reinit_table = 0;
 
   /*
@@ -413,7 +434,7 @@ void create_alias_table(afl_state_t *afl) {
   /*
   fprintf(stderr, "  entry  alias  probability  perf_score   weight
   filename\n"); for (i = 0; i < n; ++i) fprintf(stderr, "  %5u  %5u  %11u
-  %0.9f  %0.9f  %s\n", i, afl->alias_table[i], afl->alias_probability[i],
+  %0.9f  %0.9f  %s\n", i, alias_table[i], alias_probability[i],
   afl->queue_buf[i]->perf_score, afl->queue_buf[i]->weight,
             afl->queue_buf[i]->fname);
   */

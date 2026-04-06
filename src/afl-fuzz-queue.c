@@ -28,7 +28,7 @@
 #include <math.h>
 
 static double *alias_probability;
-static u32    *alias_table, active_items;
+static u32    *alias_table, map_items;
 
 #ifdef _STANDALONE_MODULE
 void minimize_bits(afl_state_t *afl, u8 *dst, u8 *src) {
@@ -67,18 +67,18 @@ inline u32 select_next_queue_entry(afl_state_t *afl) {
 
 void create_alias_table(afl_state_t *afl) {
 
-  u32    n = afl->active_items, i = 0, nSmall = 0, nLarge = n - 1;
+  u32    n = afl->queued_items, i = 0, nSmall = 0, nLarge = n - 1;
   double sum = 0;
 
   if (likely(alias_table)) {
 
-    if (likely(n > active_items)) {
+    if (likely(n > map_items)) {
 
       free(alias_table);
       alias_table = malloc(n * sizeof(u32));
       free(alias_probability);
       alias_probability = (double *)malloc(n * sizeof(double));
-      active_items = afl->active_items;
+      map_items = afl->queued_items;
 
     } else {
 
@@ -91,7 +91,7 @@ void create_alias_table(afl_state_t *afl) {
 
     alias_table = malloc(n * sizeof(u32));
     alias_probability = (double *)malloc(n * sizeof(double));
-    active_items = afl->active_items;
+    map_items = afl->active_items;
 
   }
 

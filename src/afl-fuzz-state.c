@@ -945,6 +945,8 @@ void afl_state_deinit(afl_state_t *afl) {
   afl_free(afl->ex_buf);
   afl_free(afl->alias_table);
   afl_free(afl->alias_probability);
+  if (afl->testcase_buf) { afl_free(afl->testcase_buf); }
+  if (afl->splicecase_buf) { afl_free(afl->splicecase_buf); }
 
   if (afl->fsrv.use_ijon) { afl_free(afl->ijon_input_data); }
 

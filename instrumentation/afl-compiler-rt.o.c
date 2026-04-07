@@ -3585,6 +3585,9 @@ uint32_t ijon_hashstack(void) {
 
 /* String and memory distance functions */
 
+#define IJON_DIST_MAX_LEN 1024
+#define IJON_DIST_FUNC ijon_memprogress_prefix
+
 static inline uint32_t ijon_memprogress_prefix(const char *a, const char *b,
                                                uint32_t len) {
 
@@ -3627,7 +3630,8 @@ uint32_t ijon_memdist(char *a, char *b, size_t len) {
     return len > (size_t)UINT32_MAX ? UINT32_MAX : (uint32_t)len;
   if (unlikely(len == 0)) return 0;
 
-  return ijon_memprogress_prefix(a, b, len);
+  return IJON_DIST_FUNC(a, b,
+                        len >= IJON_DIST_MAX_LEN ? IJON_DIST_MAX_LEN : len);
 
 }
 
@@ -3640,9 +3644,9 @@ uint32_t ijon_strdist(char *a, char *b) {
   size_t len_a = strlen(a);
   size_t len_b = strlen(b);
 
-  uint32_t len = (uint32_t)MIN(MAX(len_a, len_b), 2048);
+  uint32_t len = (uint32_t)MIN(MAX(len_a, len_b), IJON_DIST_MAX_LEN);
 
-  return ijon_memprogress_prefix(a, b, len);
+  return IJON_DIST_FUNC(a, b, len);
 
 }
 

@@ -1560,9 +1560,18 @@ inline void queue_testcase_retake(afl_state_t *afl, struct queue_entry *q,
 
     // only realloc if necessary or useful
     // (a custom trim can make the testcase larger)
-    if (unlikely(len > old_len || len + 1024 < old_len)) {
+    if (unlikely(len > old_len || len + 4096 < old_len)) {
 
-      afl->q_testcase_cache_size += len - old_len;
+      if (len >= old_len) {
+
+        afl->q_testcase_cache_size += len - old_len;
+
+      } else {
+
+        afl->q_testcase_cache_size -= old_len - len;
+
+      }
+
       q->testcase_buf = (u8 *)realloc(q->testcase_buf, len);
 
       if (unlikely(!q->testcase_buf)) {
@@ -1594,14 +1603,14 @@ inline void queue_testcase_retake_mem(afl_state_t *afl, struct queue_entry *q,
     if (likely(in != q->testcase_buf)) {
 
       // only realloc if we save memory
-      if (unlikely(len + 1024 < old_len)) {
+      if (unlikely(len + 4096 < old_len)) {
 
         u8 *ptr = (u8 *)realloc(q->testcase_buf, len);
 
         if (likely(ptr)) {
 
           q->testcase_buf = ptr;
-          afl->q_testcase_cache_size += len - old_len;
+          afl->q_testcase_cache_size -= old_len - len;
 
         }
 

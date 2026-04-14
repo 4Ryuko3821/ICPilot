@@ -566,7 +566,8 @@ size_t malloc_good_size(size_t len) {
 
 __attribute__((constructor)) void __dislocator_init(void) {
 
-  cached_page_size = sysconf(_SC_PAGESIZE);
+  long page_size = sysconf(_SC_PAGESIZE);
+  if (page_size > 0) cached_page_size = (size_t)page_size;
 
   char *tmp = getenv("AFL_LD_LIMIT_MB");
 

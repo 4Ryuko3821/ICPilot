@@ -771,8 +771,8 @@ It is even better to check out the exact lines of code that have been reached -
 and which have not been found so far.
 
 An "easy" helper script for this is
-[https://github.com/vanhauser-thc/afl-cov](https://github.com/vanhauser-thc/afl-cov),
-just follow the README of that separate project.
+[https://github.com/AFLplusplus/cov-analysis](https://github.com/AFLplusplus/cov-analysis),
+just follow the README.md of our separate project.
 
 If you see that an important area or a feature has not been covered so far, then
 try to find an input that is able to reach that and start a new secondary in

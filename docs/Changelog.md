@@ -5,6 +5,7 @@
 
 
 ### Version ++4.41a (dev)
+  - Switched https://github.com/AFLplusplus/cov-analysis for outdated afl-cov
   - afl-fuzz:
     - `-I tool` call now receives the new crash as a command line parameter
     - changed to a better map classifier

@@ -123,7 +123,9 @@ Step-by-step quick start:
 
    You can generate cores or use gdb directly to follow up the crashes.
 
-6. We cannot stress this enough - if you want to fuzz effectively, read the
+6. For coverage analysis of your fuzzing we recommend our partner tools [cov-analysis](https://github.com/AFLplusplus/cov-analysis)
+
+7. We cannot stress this enough - if you want to fuzz effectively, read the
    [docs/fuzzing_in_depth.md](docs/fuzzing_in_depth.md) document!
 
 ## Contact

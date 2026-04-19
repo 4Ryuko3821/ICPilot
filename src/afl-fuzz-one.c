@@ -338,7 +338,12 @@ u8 fuzz_one_original(afl_state_t *afl) {
 
   u8  a_collect[MAX_AUTO_EXTRA];
   u32 a_len = 0;
-
+#ifdef INTROSPECTION
+  u64 before_det_time = 0, before_havoc_time = 0;
+  u32 before_det_findings = 0, before_det_edges = 0;
+  u32 before_havoc_findings = 0, before_havoc_edges = 0;
+  u8 is_logged = 0;
+#endif
   /* IJON: If we're doing IJON, skip deterministic stages and go directly to
    * havoc */
   if (unlikely(afl->is_doing_ijon)) {
@@ -649,16 +654,12 @@ u8 fuzz_one_original(afl_state_t *afl) {
 
   }
 
-  u64 before_det_time = get_cur_time();
+  before_det_time = get_cur_time();
 #ifdef INTROSPECTION
-
-  u64 before_havoc_time;
-  u32 before_det_findings = afl->queued_items,
-      before_det_edges = count_non_255_bytes(afl, afl->virgin_bits),
-      before_havoc_findings, before_havoc_edges;
-  u8 is_logged = 0;
-
+  before_det_findings = afl->queued_items;
+  before_det_edges = count_non_255_bytes(afl, afl->virgin_bits);
 #endif
+
   if (!afl->skip_deterministic) {
 
     if (!skip_deterministic_stage(afl, in_buf, out_buf, len, before_det_time)) {

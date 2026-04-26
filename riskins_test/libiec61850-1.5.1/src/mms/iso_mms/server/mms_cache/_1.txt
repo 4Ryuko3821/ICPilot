@@ -1,0 +1,28 @@
+{
+  "vulnerLoc": [
+    {
+      "vulner": "MmsValueCache self = (MmsValueCache) GLOBAL_CALLOC(1, sizeof(struct sMmsValueCache));",
+      "probability": 80,
+      "explanation": "The function MmsValueCache_create allocates memory for the MmsValueCache structure using GLOBAL_CALLOC. However, it does not check if the allocation was successful. If the allocation fails, the function will return a NULL pointer, which could lead to a NULL pointer dereference in subsequent operations.",
+      "line": 25
+    },
+    {
+      "vulner": "MmsValueCacheEntry* cacheEntry = (MmsValueCacheEntry*) GLOBAL_MALLOC(sizeof(MmsValueCacheEntry));",
+      "probability": 80,
+      "explanation": "The function MmsValueCache_insertValue allocates memory for a new MmsValueCacheEntry using GLOBAL_MALLOC. However, it does not check if the allocation was successful. If the allocation fails, the function will attempt to dereference a NULL pointer, leading to undefined behavior.",
+      "line": 37
+    },
+    {
+      "vulner": "char* itemIdCopy = StringUtils_copyString(itemId);",
+      "probability": 70,
+      "explanation": "The function MmsValueCache_lookupValue copies the itemId string using StringUtils_copyString. However, it does not check if the allocation was successful. If the allocation fails, the function will attempt to use a NULL pointer, leading to undefined behavior.",
+      "line": 83
+    },
+    {
+      "vulner": "char* parentItemId = getParentSubString(itemIdCopy);",
+      "probability": 70,
+      "explanation": "The function MmsValueCache_lookupValue calls getParentSubString, which modifies the input string by setting a character to 0. This can lead to undefined behavior if the input string is not properly managed or if it is a string literal.",
+      "line": 84
+    }
+  ]
+}

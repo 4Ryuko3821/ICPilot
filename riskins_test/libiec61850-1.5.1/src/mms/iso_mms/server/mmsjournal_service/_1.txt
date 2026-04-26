@@ -1,0 +1,34 @@
+{
+  "vulnerLoc": [
+    {
+      "vulner": "memmove(buffer + (encoder->currentEntryBufPos + entryHeaderLength), buffer + (encoder->currentEntryBufPos + 48), dataContentLen);",
+      "probability": 90,
+      "explanation": "The memmove operation here is potentially vulnerable to buffer overflow. If dataContentLen is larger than the available space in the buffer, it could overwrite adjacent memory, leading to undefined behavior or security vulnerabilities.",
+      "line": 187
+    },
+    {
+      "vulner": "memcpy(filename, buffer + *bufPos, length);",
+      "probability": 85,
+      "explanation": "The memcpy operation here does not check if the length exceeds the size of the filename buffer. If length is greater than maxLength, it could lead to a buffer overflow, potentially overwriting adjacent memory.",
+      "line": 273
+    },
+    {
+      "vulner": "memcpy(rangeStart.value.binaryTime.buf, requestBuffer + bufPos, length);",
+      "probability": 80,
+      "explanation": "The memcpy operation here copies data from requestBuffer to rangeStart.value.binaryTime.buf without checking if the length exceeds the size of the destination buffer. This could lead to a buffer overflow if length is larger than the buffer size.",
+      "line": 482
+    },
+    {
+      "vulner": "memcpy(rangeStop.value.binaryTime.buf, requestBuffer + bufPos, length);",
+      "probability": 80,
+      "explanation": "Similar to the previous memcpy, this operation copies data without verifying if the length exceeds the size of the destination buffer, potentially leading to a buffer overflow.",
+      "line": 515
+    },
+    {
+      "vulner": "memcpy(entrySpec.value.octetString.buf, requestBuffer + bufPos, length);",
+      "probability": 80,
+      "explanation": "This memcpy operation copies data into entrySpec.value.octetString.buf without checking if the length exceeds the buffer size, which could result in a buffer overflow.",
+      "line": 563
+    }
+  ]
+}

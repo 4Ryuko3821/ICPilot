@@ -1,0 +1,34 @@
+{
+  "vulnerLoc": [
+    {
+      "vulner": "MmsPdu_t* mmsPdu = (MmsPdu_t*) GLOBAL_CALLOC(1, sizeof(MmsPdu_t));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for a NULL return value. If the allocation fails, mmsPdu will be NULL, and subsequent dereferencing of mmsPdu will result in a segmentation fault.",
+      "line": 27
+    },
+    {
+      "vulner": "int appendedBytes = ByteBuffer_append(writeBuffer, (uint8_t*) buffer, size);",
+      "probability": 80,
+      "explanation": "The function ByteBuffer_append is called without checking its return value. If ByteBuffer_append fails and returns -1, the error is only logged if DEBUG_MMS_SERVER is enabled, but no further action is taken. This could lead to unexpected behavior if the buffer is not correctly appended.",
+      "line": 11
+    },
+    {
+      "vulner": "uint8_t* buffer = response->buffer;",
+      "probability": 70,
+      "explanation": "The buffer pointer from the response ByteBuffer is used directly without checking if it is NULL. If response->buffer is NULL, this will lead to a segmentation fault when accessing the buffer.",
+      "line": 74
+    },
+    {
+      "vulner": "bufPos = BerEncoder_encodeTL(0xa2, confirmedErrorContentSize, buffer, bufPos);",
+      "probability": 70,
+      "explanation": "The function BerEncoder_encodeTL is called multiple times with the buffer pointer without checking if the buffer has enough space to accommodate the encoded data. This could lead to buffer overflow if the buffer is not large enough.",
+      "line": 77
+    },
+    {
+      "vulner": "MmsNamedVariableList varList = (MmsNamedVariableList) element->data;",
+      "probability": 60,
+      "explanation": "The element->data is cast to MmsNamedVariableList without checking if element or element->data is NULL. If element or element->data is NULL, this will result in a segmentation fault.",
+      "line": 179
+    }
+  ]
+}

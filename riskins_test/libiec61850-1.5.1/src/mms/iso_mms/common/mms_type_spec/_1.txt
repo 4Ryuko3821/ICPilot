@@ -1,0 +1,40 @@
+{
+  "vulnerLoc": [
+    {
+      "vulner": "GLOBAL_FREEMEM(typeSpec->name);",
+      "probability": 80,
+      "explanation": "This line is potentially vulnerable to a double-free error. If `typeSpec->name` is freed here and then `MmsVariableSpecification_destroy` is called again on the same `typeSpec`, it will attempt to free `typeSpec->name` again, leading to undefined behavior.",
+      "line": 27
+    },
+    {
+      "vulner": "GLOBAL_FREEMEM(typeSpec->typeSpec.structure.elements);",
+      "probability": 80,
+      "explanation": "This line is potentially vulnerable to a double-free error. If `typeSpec->typeSpec.structure.elements` is freed here and then `MmsVariableSpecification_destroy` is called again on the same `typeSpec`, it will attempt to free `typeSpec->typeSpec.structure.elements` again, leading to undefined behavior.",
+      "line": 34
+    },
+    {
+      "vulner": "GLOBAL_FREEMEM(typeSpec);",
+      "probability": 80,
+      "explanation": "This line is potentially vulnerable to a double-free error. If `typeSpec` is freed here and then `MmsVariableSpecification_destroy` is called again on the same `typeSpec`, it will attempt to free `typeSpec` again, leading to undefined behavior.",
+      "line": 41
+    },
+    {
+      "vulner": "if (typeSpec->typeSpec.structure.elementCount != value->value.structure.size)",
+      "probability": 70,
+      "explanation": "This line is potentially vulnerable to a null pointer dereference. If `typeSpec` or `value` is NULL, dereferencing `typeSpec->typeSpec.structure.elementCount` or `value->value.structure.size` will cause a segmentation fault.",
+      "line": 61
+    },
+    {
+      "vulner": "if (strlen(typeSpec->typeSpec.structure.elements[i]->name) == childLen)",
+      "probability": 70,
+      "explanation": "This line is potentially vulnerable to a null pointer dereference. If `typeSpec->typeSpec.structure.elements[i]` is NULL, dereferencing `typeSpec->typeSpec.structure.elements[i]->name` will cause a segmentation fault.",
+      "line": 67
+    },
+    {
+      "vulner": "if (self->typeSpec.bitString < 0)",
+      "probability": 60,
+      "explanation": "This line is potentially vulnerable to an integer underflow. If `self->typeSpec.bitString` is negative, it could lead to unexpected behavior or security vulnerabilities.",
+      "line": 124
+    }
+  ]
+}

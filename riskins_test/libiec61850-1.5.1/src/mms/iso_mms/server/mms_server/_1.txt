@@ -1,0 +1,34 @@
+{
+  "vulnerLoc": [
+    {
+      "vulner": "MmsServer self = (MmsServer) GLOBAL_CALLOC(1, sizeof(struct sMmsServer));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for NULL before being used. If the allocation fails, it could lead to a NULL pointer dereference.",
+      "line": 38
+    },
+    {
+      "vulner": "MmsServer_destroy(self);",
+      "probability": 80,
+      "explanation": "If any of the Semaphore_create calls fail, the code jumps to exit_error, which calls MmsServer_destroy(self). However, self might not be fully initialized, leading to potential issues in MmsServer_destroy.",
+      "line": 78
+    },
+    {
+      "vulner": "self->transmitBuffer = ByteBuffer_create(NULL, CONFIG_MMS_MAXIMUM_PDU_SIZE);",
+      "probability": 70,
+      "explanation": "The return value of ByteBuffer_create is not checked for NULL before being used. If the allocation fails, it could lead to a NULL pointer dereference.",
+      "line": 66
+    },
+    {
+      "vulner": "self->filestoreBasepath = StringUtils_copyString(basepath);",
+      "probability": 75,
+      "explanation": "The return value of StringUtils_copyString is not checked for NULL before being used. If the allocation fails, it could lead to a NULL pointer dereference.",
+      "line": 184
+    },
+    {
+      "vulner": "MmsValue* value = NULL;",
+      "probability": 60,
+      "explanation": "The variable 'value' is assigned NULL and later used without checking if it remains NULL, which could lead to a NULL pointer dereference.",
+      "line": 661
+    }
+  ]
+}

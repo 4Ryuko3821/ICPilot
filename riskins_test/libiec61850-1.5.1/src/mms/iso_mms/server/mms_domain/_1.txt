@@ -1,0 +1,52 @@
+{
+  "vulnerLoc": [
+    {
+      "vulner": "MmsDomain* self = (MmsDomain*) GLOBAL_CALLOC(1, sizeof(MmsDomain));",
+      "probability": 70,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for NULL. If the allocation fails, subsequent dereferencing of 'self' will result in a segmentation fault.",
+      "line": 27
+    },
+    {
+      "vulner": "self->domainName = StringUtils_copyString(domainName);",
+      "probability": 60,
+      "explanation": "The function StringUtils_copyString is used to copy the domain name, but there is no check to ensure that the copy operation was successful. If StringUtils_copyString returns NULL, it could lead to undefined behavior when 'self->domainName' is used.",
+      "line": 29
+    },
+    {
+      "vulner": "GLOBAL_FREEMEM(self->domainName);",
+      "probability": 65,
+      "explanation": "There is no check to ensure that 'self->domainName' is not NULL before calling GLOBAL_FREEMEM. If 'self->domainName' is NULL, this could lead to undefined behavior.",
+      "line": 38
+    },
+    {
+      "vulner": "if (self->namedVariables != NULL) {",
+      "probability": 60,
+      "explanation": "The code assumes that 'self->namedVariablesCount' is valid if 'self->namedVariables' is not NULL. However, there is no check to ensure that 'self->namedVariablesCount' is within a valid range, which could lead to out-of-bounds access.",
+      "line": 40
+    },
+    {
+      "vulner": "MmsJournal journal = MmsJournal_create(name);",
+      "probability": 70,
+      "explanation": "The function MmsJournal_create is called to create a journal, but there is no check to ensure that the creation was successful. If MmsJournal_create returns NULL, it could lead to undefined behavior when 'journal' is used.",
+      "line": 63
+    },
+    {
+      "vulner": "if (strcmp(mmsJournal->name, name) == 0)",
+      "probability": 75,
+      "explanation": "The code assumes that 'mmsJournal' is not NULL and that 'mmsJournal->name' is a valid string. If 'mmsJournal' is NULL or 'mmsJournal->name' is not a valid string, this could lead to a segmentation fault.",
+      "line": 75
+    },
+    {
+      "vulner": "char* separator = strchr(nameId, '$');",
+      "probability": 60,
+      "explanation": "The function strchr is used to find a separator character in 'nameId', but there is no check to ensure that 'nameId' is a valid string. If 'nameId' is NULL, this could lead to a segmentation fault.",
+      "line": 109
+    },
+    {
+      "vulner": "if (strlen(self->namedVariables[i]->name) == (unsigned) (separator - nameId)) {",
+      "probability": 65,
+      "explanation": "The code assumes that 'self->namedVariables[i]->name' is a valid string and that 'separator' is a valid pointer within 'nameId'. If these assumptions are not met, this could lead to undefined behavior.",
+      "line": 122
+    }
+  ]
+}

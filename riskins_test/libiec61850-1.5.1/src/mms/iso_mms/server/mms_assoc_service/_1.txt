@@ -1,0 +1,22 @@
+{
+  "vulnerLoc": [
+    {
+      "vulner": "self->negotiatedParameterCBC[0] = buffer[bufPos + 1];\nself->negotiatedParameterCBC[1] = buffer[bufPos + 2];",
+      "probability": 90,
+      "explanation": "This code assumes that the length of the buffer is at least 3 bytes when the length is 3. If the buffer is smaller than expected, this can lead to a buffer overflow, which is a common vulnerability in C/C++ programs. This can be exploited to execute arbitrary code or cause a denial of service.",
+      "line": 221
+    },
+    {
+      "vulner": "self->maxPduSize = BerDecoder_decodeUint32(buffer, length, bufPos);\nif (self->maxPduSize > CONFIG_MMS_MAXIMUM_PDU_SIZE)\n    self->maxPduSize = CONFIG_MMS_MAXIMUM_PDU_SIZE;",
+      "probability": 80,
+      "explanation": "The value of `self->maxPduSize` is directly assigned from the buffer without validation. If the buffer contains a large value, it could lead to unexpected behavior or resource exhaustion. Although there is a check to limit `self->maxPduSize` to `CONFIG_MMS_MAXIMUM_PDU_SIZE`, the initial assignment could still cause issues if not handled properly.",
+      "line": 318
+    },
+    {
+      "vulner": "bufPos = BerDecoder_decodeLength(buffer, &length, bufPos, maxBufPos);\nif (bufPos < 0)  {\n    return false;\n}\nif (bufPos + length > maxBufPos) {\n    return false;\n}",
+      "probability": 70,
+      "explanation": "The function `BerDecoder_decodeLength` is used to decode the length of the buffer. If the length is not properly validated, it could lead to buffer overflows or underflows. The checks for `bufPos < 0` and `bufPos + length > maxBufPos` help mitigate this risk, but the initial decoding could still be problematic if not handled correctly.",
+      "line": 278
+    }
+  ]
+}

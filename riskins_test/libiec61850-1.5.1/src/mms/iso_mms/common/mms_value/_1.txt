@@ -1,0 +1,172 @@
+{
+  "vulnerLoc": [
+    {
+      "vulner": "MmsValue* self = (MmsValue*) GLOBAL_CALLOC(1, sizeof(MmsValue));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 88
+    },
+    {
+      "vulner": "self->value.bitString.buf = (uint8_t*) GLOBAL_CALLOC(bitStringByteSize(self), 1);",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 97
+    },
+    {
+      "vulner": "self->value.octetString.buf = (uint8_t*) GLOBAL_MALLOC(size);",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_MALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 306
+    },
+    {
+      "vulner": "self->value.visibleString.buf = (char*) GLOBAL_MALLOC(size + 1);",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_MALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 308
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(componentCount, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 312
+    },
+    {
+      "vulner": "self->value.bitString.buf = (uint8_t*) GLOBAL_CALLOC(1, size);",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 314
+    },
+    {
+      "vulner": "self->value.octetString.buf = (uint8_t*) GLOBAL_CALLOC(1, abs(typeSpec->typeSpec.octetString));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 316
+    },
+    {
+      "vulner": "self->value.visibleString.buf = (char*) GLOBAL_MALLOC(size + 1);",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_MALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 318
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 320
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 322
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 324
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 326
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 328
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 330
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 332
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 334
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 336
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 338
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 340
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 342
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 344
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 346
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 348
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 350
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 352
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 354
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 356
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for success before dereferencing the pointer. If the allocation fails, it will result in a NULL pointer dereference.",
+      "line": 358
+    },
+    {
+      "vulner": "self->value.structure.components = (MmsValue**) GLOBAL_CALLOC(size, sizeof(MmsValue*

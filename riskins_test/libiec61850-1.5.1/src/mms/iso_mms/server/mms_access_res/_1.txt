@@ -1,0 +1,28 @@
+{
+  "vulnerLoc": [
+    {
+      "vulner": "memcpy(value->value.bitString.buf, buffer + bufPos + 1, dataLength - 1);",
+      "probability": 90,
+      "explanation": "This line performs a memory copy operation without checking if the destination buffer (value->value.bitString.buf) has enough space to hold the copied data. If dataLength - 1 is larger than the allocated size of value->value.bitString.buf, this will result in a buffer overflow, which can lead to undefined behavior, crashes, or security vulnerabilities.",
+      "line": 276
+    },
+    {
+      "vulner": "memcpy(value->value.integer->octets, buffer + bufPos, dataLength);",
+      "probability": 90,
+      "explanation": "This line performs a memory copy operation without checking if the destination buffer (value->value.integer->octets) has enough space to hold the copied data. If dataLength is larger than the allocated size of value->value.integer->octets, this will result in a buffer overflow, which can lead to undefined behavior, crashes, or security vulnerabilities.",
+      "line": 292
+    },
+    {
+      "vulner": "memcpy(value->value.octetString.buf, buffer + bufPos, dataLength);",
+      "probability": 90,
+      "explanation": "This line performs a memory copy operation without checking if the destination buffer (value->value.octetString.buf) has enough space to hold the copied data. If dataLength is larger than the allocated size of value->value.octetString.buf, this will result in a buffer overflow, which can lead to undefined behavior, crashes, or security vulnerabilities.",
+      "line": 317
+    },
+    {
+      "vulner": "memcpy(value->value.binaryTime.buf, buffer + bufPos, dataLength);",
+      "probability": 90,
+      "explanation": "This line performs a memory copy operation without checking if the destination buffer (value->value.binaryTime.buf) has enough space to hold the copied data. If dataLength is larger than the allocated size of value->value.binaryTime.buf, this will result in a buffer overflow, which can lead to undefined behavior, crashes, or security vulnerabilities.",
+      "line": 333
+    }
+  ]
+}

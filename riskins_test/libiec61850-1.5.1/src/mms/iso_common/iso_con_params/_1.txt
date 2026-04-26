@@ -1,0 +1,28 @@
+{
+  "vulnerLoc": [
+    {
+      "vulner": "self->value.password.octetString = (uint8_t*) StringUtils_copyString(password);",
+      "probability": 90,
+      "explanation": "This line assigns the result of StringUtils_copyString to self->value.password.octetString without checking if the allocation was successful. If StringUtils_copyString fails and returns NULL, subsequent operations on self->value.password.octetString could lead to a null pointer dereference.",
+      "line": 41
+    },
+    {
+      "vulner": "self->hostname = hostname;",
+      "probability": 70,
+      "explanation": "This line assigns the hostname pointer directly to self->hostname without copying the string. If the original hostname string is modified or freed elsewhere, it could lead to undefined behavior when accessing self->hostname.",
+      "line": 71
+    },
+    {
+      "vulner": "self->remoteApTitleLen = BerEncoder_encodeOIDToBuffer(apTitle, self->remoteApTitle, 10);",
+      "probability": 80,
+      "explanation": "This line calls BerEncoder_encodeOIDToBuffer with a fixed buffer size of 10. If the encoded OID is larger than 10 bytes, it could lead to a buffer overflow, causing memory corruption and potential security vulnerabilities.",
+      "line": 80
+    },
+    {
+      "vulner": "self->localApTitleLen = BerEncoder_encodeOIDToBuffer(apTitle, self->localApTitle, 10);",
+      "probability": 80,
+      "explanation": "Similar to the previous vulnerability, this line calls BerEncoder_encodeOIDToBuffer with a fixed buffer size of 10. If the encoded OID is larger than 10 bytes, it could lead to a buffer overflow, causing memory corruption and potential security vulnerabilities.",
+      "line": 95
+    }
+  ]
+}

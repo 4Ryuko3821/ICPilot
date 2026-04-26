@@ -1,0 +1,58 @@
+{
+  "vulnerLoc": [
+    {
+      "vulner": "memcpy(dataElement->choice.utctime.buf, value->value.utcTime, 8);",
+      "probability": 90,
+      "explanation": "The code copies 8 bytes from `value->value.utcTime` to `dataElement->choice.utctime.buf` without checking if `value->value.utcTime` is at least 8 bytes long. This can lead to a buffer overflow if `value->value.utcTime` is smaller than 8 bytes.",
+      "line": 78
+    },
+    {
+      "vulner": "dataElement->choice.visiblestring.size = strlen(value->value.visibleString.buf);",
+      "probability": 85,
+      "explanation": "The code assumes that `value->value.visibleString.buf` is a null-terminated string. If it is not null-terminated, `strlen` will read beyond the buffer, causing a buffer overflow.",
+      "line": 123
+    },
+    {
+      "vulner": "dataElement->choice.mMSString.size = strlen(value->value.visibleString.buf);",
+      "probability": 85,
+      "explanation": "The code assumes that `value->value.visibleString.buf` is a null-terminated string. If it is not null-terminated, `strlen` will read beyond the buffer, causing a buffer overflow.",
+      "line": 136
+    },
+    {
+      "vulner": "memcpy(value->value.octetString.buf, dataElement->choice.octetstring.buf, size);",
+      "probability": 80,
+      "explanation": "The code copies `size` bytes from `dataElement->choice.octetstring.buf` to `value->value.octetString.buf` without checking if `value->value.octetString.buf` is large enough to hold `size` bytes. This can lead to a buffer overflow if `value->value.octetString.buf` is smaller than `size`.",
+      "line": 402
+    },
+    {
+      "vulner": "memcpy(value->value.binaryTime.buf, dataElement->choice.binarytime.buf, size);",
+      "probability": 80,
+      "explanation": "The code copies `size` bytes from `dataElement->choice.binarytime.buf` to `value->value.binaryTime.buf` without checking if `value->value.binaryTime.buf` is large enough to hold `size` bytes. This can lead to a buffer overflow if `value->value.binaryTime.buf` is smaller than `size`.",
+      "line": 417
+    },
+    {
+      "vulner": "memcpy(buffer, identifier.buf, identifier.size);",
+      "probability": 75,
+      "explanation": "The code copies `identifier.size` bytes from `identifier.buf` to `buffer` without checking if `buffer` is large enough to hold `identifier.size` bytes. This can lead to a buffer overflow if `buffer` is smaller than `identifier.size`.",
+      "line": 470
+    },
+    {
+      "vulner": "strncpy(extendedFileName, basepath, 511);",
+      "probability": 70,
+      "explanation": "The code copies up to 511 characters from `basepath` to `extendedFileName` without ensuring that `basepath` is null-terminated and without ensuring that `extendedFileName` is large enough to hold 511 characters plus a null terminator. This can lead to a buffer overflow if `extendedFileName` is smaller than 512 bytes.",
+      "line": 487
+    },
+    {
+      "vulner": "strncat(extendedFileName, fileName, 511);",
+      "probability": 70,
+      "explanation": "The code appends up to 511 characters from `fileName` to `extendedFileName` without ensuring that `extendedFileName` is large enough to hold the concatenated result plus a null terminator. This can lead to a buffer overflow if `extendedFileName` is smaller than 512 bytes.",
+      "line": 489
+    },
+    {
+      "vulner": "memcpy(filename, buffer + *bufPos, length);",
+      "probability": 80,
+      "explanation": "The code copies `length` bytes from `buffer + *bufPos` to `filename` without checking if `filename` is large enough to hold `length` bytes. This can lead to a buffer overflow if `filename` is smaller than `length`.",
+      "line": 528
+    }
+  ]
+}

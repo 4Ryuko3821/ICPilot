@@ -1,0 +1,130 @@
+{
+  "vulnerLoc": [
+    {
+      "vulner": "typeSpec->choice.structure.components.list.array = (StructComponent_t**) GLOBAL_CALLOC(componentCount, sizeof(StructComponent_t*));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for a NULL return value, which can lead to a NULL pointer dereference if the allocation fails.",
+      "line": 34
+    },
+    {
+      "vulner": "typeSpec->choice.structure.components.list.array[i] = (StructComponent_t*) GLOBAL_CALLOC(1, sizeof(StructComponent_t));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for a NULL return value, which can lead to a NULL pointer dereference if the allocation fails.",
+      "line": 39
+    },
+    {
+      "vulner": "typeSpec->choice.structure.components.list.array[i]->componentName = (Identifier_t*) GLOBAL_CALLOC(1, sizeof(Identifier_t));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for a NULL return value, which can lead to a NULL pointer dereference if the allocation fails.",
+      "line": 42
+    },
+    {
+      "vulner": "typeSpec->choice.structure.components.list.array[i]->componentName->buf = (uint8_t*) StringUtils_copyString(namedVariable->typeSpec.structure.elements[i]->name);",
+      "probability": 80,
+      "explanation": "The result of StringUtils_copyString is not checked for a NULL return value, which can lead to a NULL pointer dereference if the allocation fails.",
+      "line": 45
+    },
+    {
+      "vulner": "typeSpec->choice.structure.components.list.array[i]->componentType = (TypeSpecification_t*) GLOBAL_CALLOC(1, sizeof(TypeSpecification_t));",
+      "probability": 90,
+      "explanation": "The allocation of memory using GLOBAL_CALLOC is not checked for a NULL return value, which can lead to a NULL pointer dereference if the allocation fails.",
+      "line": 49
+    },
+    {
+      "vulner": "GLOBAL_FREEMEM(typeSpec->choice.structure.components.list.array[i]->componentName->buf);",
+      "probability": 70,
+      "explanation": "The code does not check if componentName or componentName->buf is NULL before attempting to free it, which can lead to undefined behavior.",
+      "line": 108
+    },
+    {
+      "vulner": "GLOBAL_FREEMEM(typeSpec->choice.structure.components.list.array[i]->componentName);",
+      "probability": 70,
+      "explanation": "The code does not check if componentName is NULL before attempting to free it, which can lead to undefined behavior.",
+      "line": 109
+    },
+    {
+      "vulner": "GLOBAL_FREEMEM(typeSpec->choice.structure.components.list.array[i]->componentType);",
+      "probability": 70,
+      "explanation": "The code does not check if componentType is NULL before attempting to free it, which can lead to undefined behavior.",
+      "line": 111
+    },
+    {
+      "vulner": "GLOBAL_FREEMEM(typeSpec->choice.structure.components.list.array[i]);",
+      "probability": 70,
+      "explanation": "The code does not check if the array element is NULL before attempting to free it, which can lead to undefined behavior.",
+      "line": 112
+    },
+    {
+      "vulner": "GLOBAL_FREEMEM(typeSpec->choice.structure.components.list.array);",
+      "probability": 70,
+      "explanation": "The code does not check if the array is NULL before attempting to free it, which can lead to undefined behavior.",
+      "line": 114
+    },
+    {
+      "vulner": "GLOBAL_FREEMEM(typeSpec->choice.array.numberOfElements.buf);",
+      "probability": 70,
+      "explanation": "The code does not check if numberOfElements.buf is NULL before attempting to free it, which can lead to undefined behavior.",
+      "line": 117
+    },
+    {
+      "vulner": "GLOBAL_FREEMEM(typeSpec->choice.array.elementType);",
+      "probability": 70,
+      "explanation": "The code does not check if elementType is NULL before attempting to free it, which can lead to undefined behavior.",
+      "line": 119
+    },
+    {
+      "vulner": "GLOBAL_FREEMEM(getVarAccessAttr->typeSpecification.choice.structure.components.list.array[i]->componentName->buf);",
+      "probability": 70,
+      "explanation": "The code does not check if componentName or componentName->buf is NULL before attempting to free it, which can lead to undefined behavior.",
+      "line": 137
+    },
+    {
+      "vulner": "GLOBAL_FREEMEM(getVarAccessAttr->typeSpecification.choice.structure.components.list.array[i]->componentName);",
+      "probability": 70,
+      "explanation": "The code does not check if componentName is NULL before attempting to free it, which can lead to undefined behavior.",
+      "line": 138
+    },
+    {
+      "vulner": "GLOBAL_FREEMEM(getVarAccessAttr->typeSpecification.choice.structure.components.list.array[i]);",
+      "probability": 70,
+      "explanation": "The code does not check if the array element is NULL before attempting to free it, which can lead to undefined behavior.",
+      "line": 142
+    },
+    {
+      "vulner": "GLOBAL_FREEMEM(getVarAccessAttr->typeSpecification.choice.structure.components.list.array);",
+      "probability": 70,
+      "explanation": "The code does not check if the array is NULL before attempting to free it, which can lead to undefined behavior.",
+      "line": 144
+    },
+    {
+      "vulner": "GLOBAL_FREEMEM(getVarAccessAttr->typeSpecification.choice.array.numberOfElements.buf);",
+      "probability": 70,
+      "explanation": "The code does not check if numberOfElements.buf is NULL before attempting to free it, which can lead to undefined behavior.",
+      "line": 150
+    },
+    {
+      "vulner": "GLOBAL_FREEMEM(getVarAccessAttr->typeSpecification.choice.array.elementType);",
+      "probability": 70,
+      "explanation": "The code does not check if elementType is NULL before attempting to free it, which can lead to undefined behavior.",
+      "line": 153
+    },
+    {
+      "vulner": "char* domainIdStr = StringUtils_createStringFromBuffer(domainId.buf, domainId.size);",
+      "probability": 80,
+      "explanation": "The result of StringUtils_createStringFromBuffer is not checked for a NULL return value, which can lead to a NULL pointer dereference if the allocation fails.",
+      "line": 188
+    },
+    {
+      "vulner": "char* nameIdStr = StringUtils_createStringFromBuffer(nameId.buf, nameId.size);",
+      "probability": 80,
+      "explanation": "The result of StringUtils_createStringFromBuffer is not checked for a NULL return value, which can lead to a NULL pointer dereference if the allocation fails.",
+      "line": 189
+    },
+    {
+      "vulner": "char* nameIdStr = StringUtils_createStringFromBuffer(nameId.buf, nameId.size);",
+      "probability": 80,
+      "explanation": "The result of StringUtils_createStringFromBuffer is not checked for a NULL return value, which can lead to a NULL pointer dereference if the allocation fails.",
+      "line": 199
+    }
+  ]
+}

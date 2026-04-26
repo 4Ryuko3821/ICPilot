@@ -1,0 +1,22 @@
+{
+  "vulnerLoc": [
+    {
+      "vulner": "MmsDataAccessError accessResults[CONFIG_MMS_WRITE_SERVICE_MAX_NUMBER_OF_WRITE_ITEMS * sizeof(MmsDataAccessError)];",
+      "probability": 90,
+      "explanation": "The size of the array 'accessResults' is incorrectly calculated. The expression 'CONFIG_MMS_WRITE_SERVICE_MAX_NUMBER_OF_WRITE_ITEMS * sizeof(MmsDataAccessError)' results in an array much larger than intended. The correct size should be 'CONFIG_MMS_WRITE_SERVICE_MAX_NUMBER_OF_WRITE_ITEMS'. This could lead to buffer overflow or excessive memory usage.",
+      "line": 267
+    },
+    {
+      "vulner": "MmsDataAccessError accessResults[CONFIG_MMS_WRITE_SERVICE_MAX_NUMBER_OF_WRITE_ITEMS * sizeof(MmsDataAccessError)];",
+      "probability": 90,
+      "explanation": "The size of the array 'accessResults' is incorrectly calculated. The expression 'CONFIG_MMS_WRITE_SERVICE_MAX_NUMBER_OF_WRITE_ITEMS * sizeof(MmsDataAccessError)' results in an array much larger than intended. The correct size should be 'CONFIG_MMS_WRITE_SERVICE_MAX_NUMBER_OF_WRITE_ITEMS'. This could lead to buffer overflow or excessive memory usage.",
+      "line": 422
+    },
+    {
+      "vulner": "rval = ber_decode(NULL, &asn_DEF_MmsPdu, (void**) &mmsPdu, buffer, CONFIG_MMS_MAXIMUM_PDU_SIZE);",
+      "probability": 70,
+      "explanation": "The function 'ber_decode' is used to decode the buffer without checking the actual size of the buffer. If the buffer size is smaller than 'CONFIG_MMS_MAXIMUM_PDU_SIZE', this could lead to buffer over-read and potential security vulnerabilities.",
+      "line": 497
+    }
+  ]
+}

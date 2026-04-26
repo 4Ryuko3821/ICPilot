@@ -1,0 +1,40 @@
+{
+  "vulnerLoc": [
+    {
+      "vulner": "uint32_t vendorNameLength = strlen(MmsServer_getVendorName(mmsServer));",
+      "probability": 90,
+      "explanation": "The function `MmsServer_getVendorName` returns a pointer to a string. If this string is not properly null-terminated, the `strlen` function can cause a buffer over-read, leading to undefined behavior or a potential crash.",
+      "line": 26
+    },
+    {
+      "vulner": "uint32_t modelNameLength = strlen(MmsServer_getModelName(mmsServer));",
+      "probability": 90,
+      "explanation": "The function `MmsServer_getModelName` returns a pointer to a string. If this string is not properly null-terminated, the `strlen` function can cause a buffer over-read, leading to undefined behavior or a potential crash.",
+      "line": 27
+    },
+    {
+      "vulner": "uint32_t revisionLength = strlen(MmsServer_getRevision(mmsServer));",
+      "probability": 90,
+      "explanation": "The function `MmsServer_getRevision` returns a pointer to a string. If this string is not properly null-terminated, the `strlen` function can cause a buffer over-read, leading to undefined behavior or a potential crash.",
+      "line": 28
+    },
+    {
+      "vulner": "bufPos = BerEncoder_encodeStringWithTag(0x80, MmsServer_getVendorName(mmsServer), buffer, bufPos);",
+      "probability": 80,
+      "explanation": "The function `MmsServer_getVendorName` returns a pointer to a string. If this string is not properly null-terminated, the `BerEncoder_encodeStringWithTag` function can cause a buffer over-read, leading to undefined behavior or a potential crash.",
+      "line": 39
+    },
+    {
+      "vulner": "bufPos = BerEncoder_encodeStringWithTag(0x81, MmsServer_getModelName(mmsServer), buffer, bufPos);",
+      "probability": 80,
+      "explanation": "The function `MmsServer_getModelName` returns a pointer to a string. If this string is not properly null-terminated, the `BerEncoder_encodeStringWithTag` function can cause a buffer over-read, leading to undefined behavior or a potential crash.",
+      "line": 40
+    },
+    {
+      "vulner": "bufPos = BerEncoder_encodeStringWithTag(0x82, MmsServer_getRevision(mmsServer), buffer, bufPos);",
+      "probability": 80,
+      "explanation": "The function `MmsServer_getRevision` returns a pointer to a string. If this string is not properly null-terminated, the `BerEncoder_encodeStringWithTag` function can cause a buffer over-read, leading to undefined behavior or a potential crash.",
+      "line": 41
+    }
+  ]
+}

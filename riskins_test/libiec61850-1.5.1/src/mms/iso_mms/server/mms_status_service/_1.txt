@@ -1,0 +1,34 @@
+{
+  "vulnerLoc": [
+    {
+      "vulner": "bool extendedDerivation = BerDecoder_decodeBoolean(requestBuffer, bufPos);",
+      "probability": 80,
+      "explanation": "The function BerDecoder_decodeBoolean is used to decode a boolean value from the requestBuffer at the position bufPos. If the requestBuffer is not properly validated or if bufPos is out of bounds, this can lead to undefined behavior or buffer overflow vulnerabilities.",
+      "line": 23
+    },
+    {
+      "vulner": "bufPos = BerEncoder_encodeTL(0xa1, statusResponseLength, buffer, bufPos);",
+      "probability": 70,
+      "explanation": "The function BerEncoder_encodeTL is used to encode a TL (Tag-Length) field into the buffer at the position bufPos. If the buffer is not large enough to hold the encoded data, this can lead to buffer overflow vulnerabilities.",
+      "line": 41
+    },
+    {
+      "vulner": "bufPos = BerEncoder_encodeUInt32(invokeId, buffer, bufPos);",
+      "probability": 70,
+      "explanation": "The function BerEncoder_encodeUInt32 is used to encode a 32-bit unsigned integer into the buffer at the position bufPos. If the buffer is not large enough to hold the encoded data, this can lead to buffer overflow vulnerabilities.",
+      "line": 45
+    },
+    {
+      "vulner": "bufPos = BerEncoder_encodeUInt32((uint32_t) mmsServer->vmdLogicalStatus, buffer, bufPos);",
+      "probability": 70,
+      "explanation": "The function BerEncoder_encodeUInt32 is used to encode a 32-bit unsigned integer into the buffer at the position bufPos. If the buffer is not large enough to hold the encoded data, this can lead to buffer overflow vulnerabilities.",
+      "line": 49
+    },
+    {
+      "vulner": "bufPos = BerEncoder_encodeUInt32((uint32_t) mmsServer->vmdPhysicalStatus, buffer, bufPos);",
+      "probability": 70,
+      "explanation": "The function BerEncoder_encodeUInt32 is used to encode a 32-bit unsigned integer into the buffer at the position bufPos. If the buffer is not large enough to hold the encoded data, this can lead to buffer overflow vulnerabilities.",
+      "line": 51
+    }
+  ]
+}

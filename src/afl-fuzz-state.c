@@ -82,6 +82,24 @@ void afl_state_init(afl_state_t *afl, uint32_t map_size) {
   afl->shm.map_size = map_size ? map_size : MAP_SIZE;
 
   afl->risk_enabled = USE_RISK_FEEDBACK;
+  afl->risk_sched_enabled = RISK_ENABLE_SCHED_BONUS;
+
+  {
+    char *disable_risk = getenv(RISK_DISABLE_ENV_VAR);
+    if (disable_risk && disable_risk[0] && disable_risk[0] != '0') {
+      afl->risk_enabled = 0;
+      afl->risk_sched_enabled = 0;
+    }
+  }
+
+  {
+    char *disable_risk_sched = getenv(RISK_DISABLE_SCHED_ENV_VAR);
+    if (disable_risk_sched && disable_risk_sched[0] &&
+        disable_risk_sched[0] != '0') {
+      afl->risk_sched_enabled = 0;
+    }
+  }
+
   afl->risk_shm.map_size = sizeof(u32) * RISK_SHM_WORDS;
   afl->risk_map = NULL;
   memset(afl->cur_risk_hot, 0, sizeof(afl->cur_risk_hot));

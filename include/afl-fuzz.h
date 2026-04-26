@@ -589,7 +589,8 @@ typedef struct afl_state {
       cur_risk_hot[RISK_HOT_ARRAY_SIZE],
       cur_risk_total_hits;
   u8 cur_risk_max_level,
-      risk_enabled;
+      risk_enabled,
+      risk_sched_enabled;
 
 #ifdef __AFL_CODE_COVERAGE
   sharedmem_t shm_pcmap;                         /* Shared memory for pcmap */

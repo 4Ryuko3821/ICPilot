@@ -329,18 +329,13 @@ void create_alias_table(afl_state_t *afl) {
 
         q->weight = weight;
         double risk_score = risk_refresh_score(q);
-        if (RISK_ENABLE_SCHED_BONUS && q->risk_seen) {
+        if (afl->risk_sched_enabled && q->risk_seen) {
           double alias_bonus =
               ((double)RISK_ALIAS_WEIGHT_BONUS_PCT / 100.0) * risk_score;
-
           q->weight *= (1.0 + alias_bonus);
-        }
-
-        q->perf_score = calculate_score(afl, q);
-        if (RISK_ENABLE_SCHED_BONUS && q->risk_seen) {
+          q->perf_score = calculate_score(afl, q);
           double perf_bonus =
               ((double)RISK_PERF_SCORE_BONUS_PCT / 100.0) * risk_score;
-
           q->perf_score *= (1.0 + perf_bonus);
         }
         sum += q->weight;
@@ -393,7 +388,7 @@ void create_alias_table(afl_state_t *afl) {
 
         q->perf_score = calculate_score(afl, q);
         double risk_score = risk_refresh_score(q);
-        if (RISK_ENABLE_SCHED_BONUS && q->risk_seen) {
+        if (afl->risk_sched_enabled && q->risk_seen) {
           double perf_bonus =
               ((double)RISK_PERF_SCORE_BONUS_PCT / 100.0) * risk_score;
 

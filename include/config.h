@@ -469,6 +469,8 @@ and the mapping size to the called program. */
 
 #define RISK_SHM_ENV_VAR "AFL_RISK_SHM_ID"
 
+#define RISK_DISABLE_ENV_VAR "AFL_DISABLE_RISK"
+#define RISK_DISABLE_SCHED_ENV_VAR "AFL_DISABLE_RISK_SCHED"
 /* Default size of the shared memory fuzz map.
 We add 4 byte for one u32 length field. */
 #define SHM_FUZZ_MAP_SIZE_DEFAULT (MAX_FILE + 4)

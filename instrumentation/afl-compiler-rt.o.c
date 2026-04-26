@@ -381,6 +381,12 @@ static void send_forkserver_error(int error) {
 
 static void __afl_map_risk_shm(void) {
 
+  char *disable_risk = getenv(RISK_DISABLE_ENV_VAR);
+  if (disable_risk && disable_risk[0] && disable_risk[0] != '0') {
+    __afl_risk_map = NULL;
+    return;
+  }
+
   char *id_str = getenv(RISK_SHM_ENV_VAR);
 
   if (!id_str) {
@@ -447,6 +453,11 @@ static FORCEINLINE u32 __afl_risk_token_to_slot(unsigned int token) {
 
 void __afl_risk_ins(unsigned int token) {
 
+  char *disable_risk = getenv(RISK_DISABLE_ENV_VAR);
+  if (disable_risk && disable_risk[0] && disable_risk[0] != '0') {
+    return;
+  }
+  
   if (!USE_RISK_FEEDBACK || !__afl_risk_map) { return; }
 
   u32 slot = __afl_risk_token_to_slot(token);

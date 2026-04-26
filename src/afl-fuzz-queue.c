@@ -284,6 +284,16 @@ void create_alias_table(afl_state_t *afl) {
         }
 
         q->weight = weight;
+
+        if (RISK_ENABLE_SCHED_BONUS && q->risk_seen) {
+          double risk_bonus = q->risk_score;
+
+          if (risk_bonus > ((double)RISK_ALIAS_WEIGHT_BONUS_PCT / 100.0)) {
+            risk_bonus = (double)RISK_ALIAS_WEIGHT_BONUS_PCT / 100.0;
+          }
+          q->weight *= (1.0 + risk_bonus);
+        }
+
         q->perf_score = calculate_score(afl, q);
         sum += q->weight;
 
@@ -752,6 +762,13 @@ void add_to_queue(afl_state_t *afl, u8 *fname, u32 len, u8 passed_det) {
   q->weight = 1.0;
   q->perf_score = 100;
 
+  q->risk_total_hits = 0;
+  memset(q->risk_hot, 0, sizeof(q->risk_hot));
+  q->risk_max_level = 0;
+  q->risk_seen = 0;
+  q->risk_score = 0.0;
+  q->risk_target_hits = 0;
+
 #ifdef INTROSPECTION
   q->bitsmap_size = afl->bitsmap_size;
 #endif
@@ -972,6 +989,11 @@ void update_bitmap_score(afl_state_t *afl, struct queue_entry *q,
 
           if (likely(fav_factor > top_rated_fav_factor)) { continue; }
 
+          if (RISK_TOP_RATED_TIEBREAK) {
+            /* TODO: only when main metrics are equal / near-equal:
+              compare q->risk_score or q->risk_max_level here */
+          }
+          
           /* Looks like we're going to win. Decrease ref count for the
              previous winner, discard its afl->fsrv.trace_bits[] if necessary.
            */

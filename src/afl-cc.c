@@ -1600,6 +1600,11 @@ void add_defs_common(aflcc_state_t *aflcc) {
   insert_param(aflcc, "-D__AFL_COMPILER=1");
   insert_param(aflcc, "-DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION=1");
 
+  /* Risk bridge: automatically accept backend-emitted __POLAR_INS(...)
+     without requiring target sources to include any header manually. */
+  insert_param(aflcc, "-include");
+  insert_object(aflcc, "afl-risk-bridge.h", 0,
+                "Unable to find 'afl-risk-bridge.h'");
 }
 
 /*

@@ -81,6 +81,13 @@ void afl_state_init(afl_state_t *afl, uint32_t map_size) {
 
   afl->shm.map_size = map_size ? map_size : MAP_SIZE;
 
+  afl->risk_enabled = USE_RISK_FEEDBACK;
+  afl->risk_shm.map_size = sizeof(u32) * RISK_SHM_WORDS;
+  afl->risk_map = NULL;
+  memset(afl->cur_risk_hot, 0, sizeof(afl->cur_risk_hot));
+  afl->cur_risk_total_hits = 0;
+  afl->cur_risk_max_level = 0;
+
   afl->smallest_favored = -1;
   afl->afl_ijon_history_limit = 20;
   afl->w_init = 0.9;
@@ -998,6 +1005,7 @@ void afl_state_deinit(afl_state_t *afl) {
   ck_free(afl->havoc_prof);
 
   ck_free(afl->afl_env.afl_forksrv_supl_gids);
+  afl_shm_deinit(&afl->risk_shm);
 
   list_remove(&afl_states, afl);
 

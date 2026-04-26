@@ -223,6 +223,36 @@
 
 #define HAVOC_MIN 12U
 
+/* ---------------- Risk side-channel defaults ----------------
+   Compile-time defaults only.
+   backend still only emits __POLAR_INS(...).
+   The compiler/runtime side interprets and consumes it.
+*/
+
+#define USE_RISK_FEEDBACK              1U
+
+/* Old design-compatible defaults. Keep TARGET_SIZE at 0U for MVP if target
+   lane is not wired yet; switch to 32U once the target lane is really used. */
+#define RISK_HOT_ARRAY_SIZE            3U
+#define RISK_TARGET_SIZE               0U     /* old-compatible value: 32U */
+
+/* +4: reserve small header/scratch slots if needed by runtime aggregation */
+#define RISK_SHM_WORDS                 (RISK_HOT_ARRAY_SIZE + RISK_TARGET_SIZE + 4U)
+
+/* Per-level weights for queue-side normalization */
+#define RISK_LEVEL1_WEIGHT             1U
+#define RISK_LEVEL2_WEIGHT             2U
+#define RISK_LEVEL3_WEIGHT             4U
+
+/* Scheduling-side default knobs */
+#define RISK_ENABLE_SCHED_BONUS        1U
+#define RISK_PERF_SCORE_BONUS_PCT      20U    /* max +20% */
+#define RISK_ALIAS_WEIGHT_BONUS_PCT    10U    /* max +10% */
+#define RISK_TOP_RATED_TIEBREAK        1U
+
+/* Correctness knob for persistent mode / repeated executions */
+#define RISK_RESET_EACH_RUN            1U
+
 /* Power Schedule Divisor */
 #define POWER_BETA 1U
 #define MAX_FACTOR (POWER_BETA * 32)
@@ -436,6 +466,8 @@ and the mapping size to the called program. */
 
 #define SHM_FUZZ_ENV_VAR "__AFL_SHM_FUZZ_ID"
 #define SHM_FUZZ_MAP_SIZE_ENV_VAR "__AFL_SHM_FUZZ_MAP_SIZE"
+
+#define RISK_SHM_ENV_VAR "AFL_RISK_SHM_ID"
 
 /* Default size of the shared memory fuzz map.
 We add 4 byte for one u32 length field. */

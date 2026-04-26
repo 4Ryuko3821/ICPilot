@@ -304,6 +304,15 @@ struct queue_entry {
   double perf_score,                    /* performance score                */
       weight;
 
+  u32 risk_total_hits,
+      risk_hot[RISK_HOT_ARRAY_SIZE],
+      risk_target_hits;     /* keep as stub until TARGET lane is actually wired */
+
+  u8 risk_max_level,
+      risk_seen;
+  
+  double risk_score;
+
   u32 lin_selects;                      /* LinUCB cache */
   double lin_reward_ema,
       lin_last_ucb,
@@ -574,6 +583,14 @@ typedef struct afl_state {
   sharedmem_t      shm;
   sharedmem_t     *shm_fuzz;
   afl_env_vars_t   afl_env;
+
+  sharedmem_t risk_shm;
+  u32 *risk_map,
+      cur_risk_hot[RISK_HOT_ARRAY_SIZE],
+      cur_risk_total_hits;
+  u8 cur_risk_max_level,
+      risk_enabled;
+
 #ifdef __AFL_CODE_COVERAGE
   sharedmem_t shm_pcmap;                         /* Shared memory for pcmap */
   sharedmem_t shm_modmap;                       /* Shared memory for modmap */

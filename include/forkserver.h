@@ -108,6 +108,9 @@ typedef struct afl_forkserver {
 
   u8 *trace_bits;                       /* SHM with instrumentation bitmap  */
 
+  u32 *risk_map;       /* independent risk side-channel SHM */
+  u32 risk_map_words;
+
   s32 fsrv_pid,                         /* PID of the fork server           */
       child_pid,                        /* PID of the fuzzed program        */
       child_status,                     /* waitpid result for the child     */

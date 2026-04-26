@@ -172,6 +172,8 @@ static u32 __afl_fuzz_len_dummy;
 u32       *__afl_fuzz_len = &__afl_fuzz_len_dummy;
 int        __afl_sharedmem_fuzzing __attribute__((weak));
 
+static u32 *__afl_risk_map = NULL;
+
 u32 __afl_final_loc;
 u32 __afl_map_size = MAP_SIZE;
 u32 __afl_cov_map_size = MAP_SIZE;
@@ -358,6 +360,18 @@ void __afl_trace(const u32 x) {
 
   return;
 
+}
+
+static inline void __afl_risk_reset(void) {
+#if RISK_RESET_EACH_RUN
+  if (__afl_risk_map) memset(__afl_risk_map, 0, sizeof(u32) * RISK_SHM_WORDS);
+#endif
+}
+
+void __afl_risk_ins(unsigned int token) {
+  if (!__afl_risk_map) return;
+  /* TODO: decode backend token -> level index / optional target slot */
+  /* MVP: only update hot buckets */
 }
 
 /* Error reporting to forkserver controller */
@@ -741,6 +755,9 @@ static void __afl_map_shm(void) {
 
 #endif
 
+    /* map independent risk side-channel shm if configured */
+    /* TODO: read AFL_RISK_SHM_ID and attach to __afl_risk_map */
+    
     /* DEFERRED IJON SETUP: Initialize on first use when actual map size is
      * known */
     /* This fixes PCGUARD mode where __afl_final_loc=0 at initialization time */
@@ -749,6 +766,8 @@ static void __afl_map_shm(void) {
 
     /* IJON STATE RESET: Reset state for each execution */
     ijon_reset_state();
+    
+    __afl_risk_reset();
     /* Write something into the bitmap so that even with low AFL_INST_RATIO,
        our parent doesn't give up on us. */
 

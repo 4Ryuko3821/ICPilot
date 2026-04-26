@@ -338,8 +338,9 @@ u8 fuzz_one_original(afl_state_t *afl) {
 
   u8  a_collect[MAX_AUTO_EXTRA];
   u32 a_len = 0;
+  u64 before_det_time = 0;
 #ifdef INTROSPECTION
-  u64 before_det_time = 0, before_havoc_time = 0;
+  u64 before_havoc_time = 0;
   u32 before_det_findings = 0, before_det_edges = 0;
   u32 before_havoc_findings = 0, before_havoc_edges = 0;
   u8 is_logged = 0;

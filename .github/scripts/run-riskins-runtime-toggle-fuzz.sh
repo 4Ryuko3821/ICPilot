@@ -11,6 +11,9 @@ set -euo pipefail
 : "${MODBUS_SEEDS:?}"
 : "${PREENY_DIR:?}"
 
+export AFL_PATH="${AFL_PATH:-$AFL_ROOT}"
+export PATH="$AFL_ROOT:$PATH"
+
 OUT_ROOT="$RISKINS_WORKBASE/fuzz-out"
 FUZZ_SECONDS="${FUZZ_SECONDS:-10800}"
 PREENY_SO="${PREENY_DIR}/${PREENY_SOCKET_SO:-desock.so}"
@@ -32,15 +35,27 @@ launch_case() {
   local target="$3"
   local seeds="$4"
   local workdir="$5"
+  local runtime_dir="$OUT_ROOT/runtime-$name"
+  local target_name
+
+  target_name="$(basename "$target")"
 
   mkdir -p "$OUT_ROOT/$name"
+  rm -rf "$runtime_dir"
+  mkdir -p "$runtime_dir"
+  cp -a "$workdir"/. "$runtime_dir"/
+
+  if [[ ! -x "$runtime_dir/$target_name" ]]; then
+    chmod +x "$runtime_dir/$target_name" || true
+  fi
 
   echo "[*] launching $name ($mode)"
   (
-    cd "$workdir"
+    cd "$runtime_dir"
 
     if [[ "$mode" == "risk-off" ]]; then
       env \
+        AFL_PATH="$AFL_PATH" \
         LD_PRELOAD="$PREENY_SO" \
         AFL_DISABLE_RISK=1 \
         AFL_DISABLE_RISK_SCHED=1 \
@@ -55,9 +70,10 @@ launch_case() {
           -t 2000+ \
           -i "$seeds" \
           -o "$OUT_ROOT/$name" \
-          -- "$target"
+          -- "./$target_name"
     else
       env \
+        AFL_PATH="$AFL_PATH" \
         LD_PRELOAD="$PREENY_SO" \
         AFL_SKIP_CPUFREQ="${AFL_SKIP_CPUFREQ:-1}" \
         AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES="${AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:-1}" \
@@ -70,7 +86,7 @@ launch_case() {
           -t 2000+ \
           -i "$seeds" \
           -o "$OUT_ROOT/$name" \
-          -- "$target"
+          -- "./$target_name"
     fi
   ) >"$OUT_ROOT/$name.console.log" 2>&1 &
 

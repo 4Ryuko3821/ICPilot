@@ -6,6 +6,9 @@ WORKBASE="${RUNNER_TEMP:-/tmp}/riskins-ci"
 mkdir -p "$WORKBASE" "$WORKBASE/seeds"
 
 AFL_ROOT="$ROOT"
+export AFL_PATH="${AFL_PATH:-$AFL_ROOT}"
+export PATH="$AFL_ROOT:$PATH"
+
 IEC_ROOT="$ROOT/riskins_test/libiec61850-1.5.1"
 IEC_BUILD="$IEC_ROOT/build"
 MODBUS_ROOT="$ROOT/riskins_test/libmodbus-3.1.6"
@@ -27,6 +30,9 @@ make_fallback_seed_dir() {
   echo "$dst"
 }
 
+echo "[*] AFL_ROOT=$AFL_ROOT"
+echo "[*] AFL_PATH=$AFL_PATH"
+
 echo "[*] Build AFL++..."
 pushd "$AFL_ROOT" >/dev/null
   make clean || true
@@ -47,15 +53,24 @@ echo "[*] Build IEC61850 target..."
 rm -rf "$IEC_BUILD"
 mkdir -p "$IEC_BUILD"
 
-if [[ -f "$IEC_ROOT/CMakeLists.txt" ]]; then
-  cmake -S "$IEC_ROOT" -B "$IEC_BUILD" \
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-    -DCMAKE_C_COMPILER="$AFL_ROOT/afl-clang-fast"
-  cmake --build "$IEC_BUILD" -j"$(nproc)"
-fi
-
 IEC_TARGET=""
 IEC_WORKDIR=""
+
+if [[ -f "$IEC_ROOT/CMakeLists.txt" ]]; then
+  set +e
+  AFL_PATH="$AFL_PATH" cmake -S "$IEC_ROOT" -B "$IEC_BUILD" \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCMAKE_C_COMPILER="$AFL_ROOT/afl-clang-fast" \
+    -DCMAKE_CXX_COMPILER="${CXX:-clang++-18}"
+  cmake_rc=$?
+  set -e
+
+  if [[ $cmake_rc -eq 0 ]]; then
+    cmake --build "$IEC_BUILD" -j"$(nproc)" || true
+  else
+    echo "[!] IEC CMake configure failed, will fall back to example Makefile build"
+  fi
+fi
 
 if [[ -x "$IEC_BUILD/examples/server_example_basic_io/server_example_basic_io" ]]; then
   IEC_TARGET="$IEC_BUILD/examples/server_example_basic_io/server_example_basic_io"
@@ -63,7 +78,7 @@ if [[ -x "$IEC_BUILD/examples/server_example_basic_io/server_example_basic_io" ]
 else
   pushd "$IEC_ROOT/examples/server_example_basic_io" >/dev/null
     make clean || true
-    make CC="$AFL_ROOT/afl-clang-fast" -j"$(nproc)"
+    AFL_PATH="$AFL_PATH" make CC="$AFL_ROOT/afl-clang-fast" -j"$(nproc)"
     test -x "$IEC_ROOT/examples/server_example_basic_io/server_example_basic_io"
   popd >/dev/null
   IEC_TARGET="$IEC_ROOT/examples/server_example_basic_io/server_example_basic_io"
@@ -87,7 +102,7 @@ find "$MODBUS_ROOT" -maxdepth 1 -type f \( \
 pushd "$MODBUS_ROOT" >/dev/null
   ./autogen.sh
   make distclean || true
-  CC="$AFL_ROOT/afl-clang-fast" CFLAGS="-O2 -g" ./configure --disable-shared --enable-static
+  AFL_PATH="$AFL_PATH" CC="$AFL_ROOT/afl-clang-fast" CFLAGS="-O2 -g" ./configure --disable-shared --enable-static
   make -j"$(nproc)"
   test -x "$MODBUS_ROOT/tests/unit-test-server"
 popd >/dev/null
@@ -129,6 +144,7 @@ echo "[*] Modbus seeds   : $MODBUS_SEEDS"
 {
   echo "RISKINS_WORKBASE=$WORKBASE"
   echo "AFL_ROOT=$AFL_ROOT"
+  echo "AFL_PATH=$AFL_PATH"
   echo "IEC_TARGET=$IEC_TARGET"
   echo "IEC_WORKDIR=$IEC_WORKDIR"
   echo "IEC_SEEDS=$IEC_SEEDS"

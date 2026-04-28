@@ -257,7 +257,7 @@ static void usage(u8 *argv0, int more_help) {
       "  -p schedule   - power schedules compute a seed's performance score:\n"
       "                  explore(default), fast, exploit, seek, rare, mmopt, "
       "coe, lin,\n"
-      "                  quad, linucb -- see docs/FAQ.md for more information\n"
+      "                  quad, linucb (LinUCB + phase-bandit) -- see docs/FAQ.md for more information\n"
       "  -f file       - location read by the fuzzed program (default: stdin "
       "or @@)\n"
       "  -t msec       - timeout for each run (auto-scaled, default %u ms). "

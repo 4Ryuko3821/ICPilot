@@ -258,6 +258,14 @@ struct skipdet_global {
 
 };
 
+enum {
+  PHASE_ARM_DET = 0,
+  PHASE_ARM_BALANCED,
+  PHASE_ARM_DEEP,
+  PHASE_ARM_RISK,
+  PHASE_ARM_NUM
+};
+
 struct queue_entry {
 
   u8 *fname;                            /* File name for the test case      */
@@ -307,17 +315,21 @@ struct queue_entry {
   u32 risk_total_hits,
       risk_hot[RISK_HOT_ARRAY_SIZE],
       risk_target_hits;     /* keep as stub until TARGET lane is actually wired */
-
   u8 risk_max_level,
       risk_seen;
-  
   double risk_score;
 
-  u32 lin_selects;                      /* LinUCB cache */
+  /* LinUCB cache */
+  u32 lin_selects;                      
   double lin_reward_ema,
       lin_last_ucb,
       lin_last_mean,
       lin_last_reward;
+
+  /* Phase bandit cache */
+  u32 phase_selects[PHASE_ARM_NUM];
+  u8 phase_last_arm;
+  double phase_reward_ema;
 
   struct queue_entry *mother;            /* queue entry this based on        */
   u8                 *trace_mini;        /* Trace bytes, if kept             */
@@ -591,6 +603,13 @@ typedef struct afl_state {
   u8 cur_risk_max_level,
       risk_enabled,
       risk_sched_enabled;
+
+  /* Active phase-bandit decision for the currently selected seed */
+  u8 phase_cur_arm,
+      phase_force_det,
+      phase_force_skip_det;
+  double phase_energy_mult,
+      phase_last_reward;
 
 #ifdef __AFL_CODE_COVERAGE
   sharedmem_t shm_pcmap;                         /* Shared memory for pcmap */

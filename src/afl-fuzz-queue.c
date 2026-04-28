@@ -811,13 +811,25 @@ void add_to_queue(afl_state_t *afl, u8 *fname, u32 len, u8 passed_det) {
   q->mother = afl->queue_cur;
   q->weight = 1.0;
   q->perf_score = 100;
-
+  /* Risk cache */
   q->risk_total_hits = 0;
   memset(q->risk_hot, 0, sizeof(q->risk_hot));
   q->risk_max_level = 0;
   q->risk_seen = 0;
   q->risk_score = 0.0;
   q->risk_target_hits = 0;
+
+  /* LinUCB cache */
+  q->lin_selects = 0;
+  q->lin_reward_ema = 0.0;
+  q->lin_last_ucb = 0.0;
+  q->lin_last_mean = 0.0;
+  q->lin_last_reward = 0.0;
+
+  /* Phase bandit cache */
+  memset(q->phase_selects, 0, sizeof(q->phase_selects));
+  q->phase_last_arm = PHASE_ARM_BALANCED;
+  q->phase_reward_ema = 0.0;
 
 #ifdef INTROSPECTION
   q->bitsmap_size = afl->bitsmap_size;
@@ -1651,6 +1663,20 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
 
     // Add a lower bound to AFLFast's energy assignment strategies
     perf_score = 1;
+  }
+
+  /* In linucb mode, make calculate_score itself risk-aware too, so that
+    local perf_score refreshes keep seeing risk pressure even outside the
+    alias-table rebuild path. */
+  if (afl->linucb_mode && afl->risk_sched_enabled && q->risk_seen) {
+
+    double risk_local = q->risk_score +
+                        0.20 * log2(1.0 + (double)q->risk_total_hits) +
+                        0.35 * log2(1.0 + (double)q->risk_target_hits) +
+                        0.25 * (double)q->risk_max_level;
+
+    if (risk_local > 4.0) risk_local = 4.0;
+    perf_score = (u32)((double)perf_score * (1.0 + 0.08 * risk_local));
 
   }
 
@@ -1659,7 +1685,6 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
   if (perf_score > afl->havoc_max_mult * 100) {
 
     perf_score = afl->havoc_max_mult * 100;
-
   }
 
   return perf_score;

@@ -336,6 +336,11 @@ u8 fuzz_one_original(afl_state_t *afl) {
 
   u8 ret_val = 1, doing_det = 0;
 
+  u8 saved_skip_deterministic = afl->skip_deterministic,
+      phase_force_skip_det = 0,
+      phase_force_det = 0;
+  double phase_energy_mult = 1.0;
+
   u8  a_collect[MAX_AUTO_EXTRA];
   u32 a_len = 0;
   u64 before_det_time = 0;
@@ -624,6 +629,25 @@ u8 fuzz_one_original(afl_state_t *afl) {
   if (unlikely(perf_score <= 0 && afl->active_items > 1)) {
 
     goto abandon_entry;
+  }
+  
+  /* LinUCB phase-bandit: selected episode action controls local energy
+    without overwriting the queue's long-lived base perf_score. */
+  if (afl->linucb_mode) {
+
+    phase_force_skip_det = afl->phase_force_skip_det;
+    phase_force_det = afl->phase_force_det;
+    phase_energy_mult = afl->phase_energy_mult > 0.05 ? afl->phase_energy_mult : 1.0;
+
+    {
+      double scaled = (double)perf_score * phase_energy_mult;
+      if (scaled < 1.0) scaled = 1.0;
+      if (scaled > (double)(afl->havoc_max_mult * 100)) {
+        scaled = (double)(afl->havoc_max_mult * 100);
+      }
+
+      perf_score = (u32)scaled;
+    }
 
   }
 
@@ -661,12 +685,16 @@ u8 fuzz_one_original(afl_state_t *afl) {
   before_det_edges = count_non_255_bytes(afl, afl->virgin_bits);
 #endif
 
+  /* Phase bandit can force the current episode toward havoc/risk exploration,
+    but it must not override a user-specified global -z. */
+  afl->skip_deterministic =
+    saved_skip_deterministic || (phase_force_skip_det && !phase_force_det);
+
   if (!afl->skip_deterministic) {
 
     if (!skip_deterministic_stage(afl, in_buf, out_buf, len, before_det_time)) {
 
       goto abandon_entry;
-
     }
 
   }
@@ -3733,6 +3761,9 @@ retry_splicing:
 
 /* we are through with this queue entry - for this iteration */
 abandon_entry:
+
+  /* restore global deterministic policy after the per-episode override */
+  afl->skip_deterministic = saved_skip_deterministic;
 
   /* IJON queue protection only - memory cleanup handled normally */
   if (unlikely(afl->is_doing_ijon)) {

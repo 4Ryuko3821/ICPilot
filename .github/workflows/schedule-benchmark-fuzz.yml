@@ -1,7 +1,5 @@
 name: Schedule benchmark fuzz
 
-run-name: schedule benchmark ${{ github.event.inputs.test_schedule || 'linucb' }} vs ${{ github.event.inputs.base_schedule || 'explore' }}
-
 on:
   workflow_dispatch:
     inputs:

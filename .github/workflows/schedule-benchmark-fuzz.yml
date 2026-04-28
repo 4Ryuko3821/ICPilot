@@ -27,8 +27,6 @@ on:
           - iec61850
           - modbus
 
-  # 让 schedule-dev 分支提交后也能触发。
-  # 如果你只想手动运行，可以删除整个 push 块。
   push:
     branches:
       - schedule-dev
@@ -60,15 +58,24 @@ jobs:
       PREENY_SOCKET_SO: "desock.so"
       AFL_PATH: ${{ github.workspace }}
 
-      # 复用 prepare-riskins-build.sh 依赖的工作目录变量，
-      # 但放到独立 schedule-ci 下，避免和原 riskins workflow 混用。
-      RISKINS_WORKBASE: ${{ runner.temp }}/schedule-ci
+      # 注意：这里不要用 runner.temp。
+      # job 级 env 里 runner context 不可用。
+      RISKINS_WORKBASE: ${{ github.workspace }}/.schedule-ci
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
+      - name: Initialize benchmark workspace
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf "$RISKINS_WORKBASE"
+          mkdir -p "$RISKINS_WORKBASE"
+          echo "RISKINS_WORKBASE=$RISKINS_WORKBASE"
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
 
       - name: Show runner toolchain
         shell: bash
@@ -121,11 +128,11 @@ jobs:
           rm -rf /tmp/preeny
           git clone --depth 1 https://github.com/zardus/preeny.git /tmp/preeny
           make -C /tmp/preeny/src desock.so
-          mkdir -p "${{ github.workspace }}/.deps/preeny"
-          cp /tmp/preeny/src/desock.so "${{ github.workspace }}/.deps/preeny/desock.so"
-          test -f "${{ github.workspace }}/.deps/preeny/desock.so"
-          echo "PREENY_DIR=${{ github.workspace }}/.deps/preeny" >> "$GITHUB_ENV"
-          ls -lah "${{ github.workspace }}/.deps/preeny/desock.so"
+          mkdir -p "${GITHUB_WORKSPACE}/.deps/preeny"
+          cp /tmp/preeny/src/desock.so "${GITHUB_WORKSPACE}/.deps/preeny/desock.so"
+          test -f "${GITHUB_WORKSPACE}/.deps/preeny/desock.so"
+          echo "PREENY_DIR=${GITHUB_WORKSPACE}/.deps/preeny" >> "$GITHUB_ENV"
+          ls -lah "${GITHUB_WORKSPACE}/.deps/preeny/desock.so"
 
       - name: Validate and prepare helper scripts
         shell: bash
@@ -150,7 +157,7 @@ jobs:
           for script in "${REQUIRED_SCRIPTS[@]}"; do
             if grep -q $'\r' "$script"; then
               echo "[!] CRLF line endings detected in: $script" >&2
-              echo "    Please convert it to LF, for example: dos2unix $script" >&2
+              echo "    Please convert it to LF before committing." >&2
               exit 1
             fi
           done
@@ -200,13 +207,35 @@ jobs:
           set -euxo pipefail
           ./.github/scripts/prepare-riskins-build.sh
 
-      - name: Show afl-fuzz schedule help
+      - name: Validate afl-fuzz candidate schedule support
         shell: bash
         run: |
           set -euxo pipefail
-          echo "AFL_ROOT=${AFL_ROOT:-}"
+
+          test -n "${AFL_ROOT:-}"
           test -x "${AFL_ROOT}/afl-fuzz"
-          "${AFL_ROOT}/afl-fuzz" -h 2>&1 | grep -Ei -- "-p|schedule|linucb|power" || true
+
+          echo "[*] Checking afl-fuzz help output..."
+          "${AFL_ROOT}/afl-fuzz" -h > /tmp/afl-fuzz-help.txt 2>&1 || true
+
+          grep -Ei -- "-p|schedule|power" /tmp/afl-fuzz-help.txt || {
+            echo "[!] Cannot find schedule-related help text in afl-fuzz -h output" >&2
+            cat /tmp/afl-fuzz-help.txt >&2
+            exit 1
+          }
+
+          echo "[*] Checking candidate schedule name: ${TEST_SCHEDULE}"
+          if [ "${TEST_SCHEDULE}" = "linucb" ]; then
+            if ! grep -qi "linucb" /tmp/afl-fuzz-help.txt; then
+              echo "[!] TEST_SCHEDULE=linucb, but afl-fuzz -h does not mention linucb." >&2
+              echo "    This may mean -p linucb is not registered in afl-fuzz help/option list." >&2
+              echo "    If linucb is accepted but hidden from help, relax this check." >&2
+              cat /tmp/afl-fuzz-help.txt >&2
+              exit 1
+            fi
+          fi
+
+          echo "[+] afl-fuzz schedule help check passed."
 
       - name: Run schedule benchmark fuzz campaigns
         shell: bash
@@ -221,11 +250,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           OUT_ROOT="${RISKINS_WORKBASE}/schedule-fuzz-out"
+
           if [ ! -d "$OUT_ROOT" ]; then
             echo "schedule fuzz output directory not found: $OUT_ROOT"
+            echo "RISKINS_WORKBASE=$RISKINS_WORKBASE"
+            find "$RISKINS_WORKBASE" -maxdepth 4 -type f -o -type d 2>/dev/null | sort || true
             exit 1
           fi
+
           ./.github/scripts/summarize-schedule-benchmark.py "$OUT_ROOT"
 
       - name: Upload schedule benchmark artifacts
@@ -235,4 +269,4 @@ jobs:
           name: schedule-benchmark-${{ github.run_id }}
           if-no-files-found: warn
           path: |
-            ${{ runner.temp }}/schedule-ci/schedule-fuzz-out/**
+            ${{ github.workspace }}/.schedule-ci/schedule-fuzz-out/**

@@ -6,7 +6,7 @@ on:
       fuzz_seconds:
         description: "Seconds for each fuzz campaign"
         required: true
-        default: "10800"
+        default: "18000"
       base_schedule:
         description: "Baseline AFL++ power schedule, e.g. explore / fast / rare"
         required: true
@@ -42,7 +42,7 @@ jobs:
     timeout-minutes: 360
 
     env:
-      FUZZ_SECONDS: ${{ github.event.inputs.fuzz_seconds || '10800' }}
+      FUZZ_SECONDS: ${{ github.event.inputs.fuzz_seconds || '18000' }}
       BASE_SCHEDULE: ${{ github.event.inputs.base_schedule || 'explore' }}
       TEST_SCHEDULE: ${{ github.event.inputs.test_schedule || 'linucb' }}
       RUN_PROTOCOLS: ${{ github.event.inputs.protocols || 'both' }}
